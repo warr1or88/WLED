@@ -1449,14 +1449,15 @@ void IRAM_ATTR WS2812FX::setPixelColor(int i, uint32_t col)
 {
   if (i >= _length) return;
   if (i < customMappingSize) i = customMappingTable[i];
-  busses.setPixelColor(i, col);
+  if (i>=0) busses.setPixelColor(i, col); //WLEDMM: negatives will not be displayed
 }
 
 uint32_t WS2812FX::getPixelColor(uint16_t i)
 {
   if (i >= _length) return 0;
   if (i < customMappingSize) i = customMappingTable[i];
-  return busses.getPixelColor(i);
+  if (i>=0) return busses.getPixelColor(i); //WLEDMM: negatives will not be displayed
+  return 0;
 }
 
 
@@ -2008,9 +2009,33 @@ void WS2812FX::deserializeMap(uint8_t n) {
     else
 #endif
       customMappingSize  = map.size();
-    customMappingTable = new uint16_t[customMappingSize];
-    for (uint16_t i=0; i<MIN(customMappingSize, map.size()); i++) 
-      customMappingTable[i] = (uint16_t) (map[i]<0 ? 0xFFFFU : map[i]);
+    customMappingTable = new int16_t[customMappingSize];
+    for (int i=0; i<customMappingSize;i++) customMappingTable[i] = (int16_t)0x7FFF; //WLEDMM: init with no show
+
+    //assign all >=0 mappings to customMappingTable
+    for (uint16_t i=0; i<map.size(); i++) 
+      if (map[i]>=0)
+        customMappingTable[map[i].as<uint16_t>()] = i;
+        
+    //give the -1 values an unused map value so sPC and gPC can use it (but not display it)
+    for (int i=0; i<customMappingSize;i++) {
+      if (customMappingTable[i] == (int16_t)0x7FFF) { // for each -1
+          //find an unused slot
+        for (int j=0; j<customMappingSize;j++) { //search the whole array
+          //look if j or -j already exists
+          bool found = false;
+          for(int k = 0; k < customMappingSize; k++) {
+            if(customMappingTable[k] == abs(j)) {
+                found = true;
+                break;
+            }
+          }
+          if (!found) {
+            customMappingTable[i] = -j;
+          }
+        }
+      }
+    }
     loadedLedmap = n;
 
     #ifdef WLED_DEBUG

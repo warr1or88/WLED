@@ -72,17 +72,17 @@ void WS2812FX::setUpMatrix(bool reset) {
         return;
       }
 
-      customMappingTable = new uint16_t[Segment::maxWidth * Segment::maxHeight];
+      customMappingTable = new int16_t[Segment::maxWidth * Segment::maxHeight];
     }
 
     if (customMappingTable != nullptr) {
       uint16_t customMappingSizeLedmap = customMappingSize;
       customMappingSize = Segment::maxWidth * Segment::maxHeight;
 
-      uint16_t *customMappingTableCombi = nullptr; //WLEDMM: Idea @Troy#2642 
+      int16_t *customMappingTableCombi = nullptr; //WLEDMM: Idea @Troy#2642 
       if (customMappingSizeLedmap > 0) { //WLEDMM: @Troy#2642 : include ledmap = 0 as default ledmap
-        customMappingTableCombi = new uint16_t[customMappingSize];
-        for (int i=0; i<customMappingSize;i++) customMappingTableCombi[i] = (uint16_t)0xFFFFU; //WLEDMM: init with no show
+        customMappingTableCombi = new int16_t[customMappingSize];
+        for (int i=0; i<customMappingSize;i++) customMappingTableCombi[i] = (int16_t)0x7FFF; //WLEDMM: init with no show
       }
 
       uint16_t x, y, pix=0; //pixel
@@ -97,8 +97,9 @@ void WS2812FX::setUpMatrix(bool reset) {
             x = p.serpentine && j%2 ? h-x-1 : x;
             uint16_t index = (p.yOffset + (p.vertical?x:y)) * Segment::maxWidth + p.xOffset + (p.vertical?y:x);
             if (customMappingSizeLedmap > 0) {  //WLEDMM: @Troy#2642 : include ledmap = 0 as default ledmap
-              if (index < customMappingSizeLedmap && customMappingTable[index] < customMappingSize)
-                  customMappingTableCombi[customMappingTable[index]] = pix; //WLEDMM: allow for 2 transitions if reset = false (ledmap and logical to physical)
+              uint16_t absCMTIndex = abs(customMappingTable[index]);
+              if (index < customMappingSizeLedmap && absCMTIndex < customMappingSize)
+                  customMappingTableCombi[absCMTIndex] = customMappingTable[index]>=0?pix:-pix; //WLEDMM: allow for 2 transitions if reset = false (ledmap and logical to physical)
             }
             else
               customMappingTable[index] = pix;
@@ -148,7 +149,7 @@ void IRAM_ATTR_YN WS2812FX::setPixelColorXY(int x, int y, uint32_t col) //WLEDMM
   if (index >= _length) return;
 #endif
   if (index < customMappingSize) index = customMappingTable[index];
-  busses.setPixelColor(index, col);
+  if (index>=0) busses.setPixelColor(index, col); //WLEDMM Negatives will not be displayed
 }
 
 // returns RGBW values of pixel

@@ -1328,8 +1328,14 @@ function drawSegments() {
 			var noMap = [];
 			for (let i=0;i<maxWidth * maxHeight;i++) noMap.push(i); //initially add all pixels in array
 			var colorArray = ["yellow",     "green",     "magenta",   "orange"];
-			for (let i=0;i<ledmapJson["map"].length;i++) {
-				let mapIndex = ledmapJson["map"][i];
+			var customMappingTable = [];
+			for (let i=0;i<maxWidth * maxHeight;i++) customMappingTable.push(-1); //init with noshow
+
+			for (let i=0;i<maxWidth * maxHeight;i++)
+				if (ledmapJson["map"][i]>=0) customMappingTable[ledmapJson["map"][i]] = i;
+
+			for (let i=0;i<customMappingTable.length;i++) {
+				let mapIndex = customMappingTable[i];
 				if (mapIndex != -1) {
 					ctx.font = parseInt(ppL/3) + 'px Arial'; 
 					ctx.fillStyle = "white";
