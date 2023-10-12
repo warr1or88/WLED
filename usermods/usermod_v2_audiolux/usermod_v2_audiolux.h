@@ -55,13 +55,21 @@ class AudioLux {
 
 AudioLux audioLux;
 
-static const char _data_FX_mode_TwinkleVisualization[] PROGMEM = "AudioLux - TwinkleVisualization";
+static const char _data_FX_mode_TwinkleVisualization[] PROGMEM = "AudioLux - Twinkle";
+static const char _data_FX_mode_HueVisualization[] PROGMEM = "AudioLux - Hue";
 
 
 uint16_t mode_TwinkleVisualization() { 
 	if (SEGENV.call == 0) {
-		audioLux.initEffect(); 
 		audioLux.setVizTwinkleVisualization();
+	}
+	audioLux.loop();
+	return FRAMETIME;
+}
+
+uint16_t mode_HueVisualization() { 
+	if (SEGENV.call == 0) {
+		audioLux.setVizHueVisualization();
 	}
 	audioLux.loop();
 	return FRAMETIME;
@@ -79,6 +87,7 @@ class AudioLuxUsermod : public Usermod {
 		if(!enabled) return;
 
       	strip.addEffect(255, &mode_TwinkleVisualization, _data_FX_mode_TwinkleVisualization);
+      	strip.addEffect(255, &mode_HueVisualization, _data_FX_mode_HueVisualization);
 
 		initDone = true;
     }
