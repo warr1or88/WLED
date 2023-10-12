@@ -17,7 +17,7 @@ class AudioLux {
 	LEDStrip ledstrip = LEDStrip(NUM_LEDS);
 	Input* input;
 	Visualization* viz;
-	// TriangleAnimation* anim;
+	Animation* anim;
 	Looper* looper = Looper::instance();
 
 	public:
@@ -35,8 +35,9 @@ class AudioLux {
 		// Add all the components to the looper so they update every frame
 		
 		looper->clearAll();
+		delete viz;
+		delete anim;
 		looper->addInput(input);
-		// looper->addAnimation(anim);
 		// looper->setUpdatesPerSecond(30);
 	}
 
@@ -49,6 +50,13 @@ class AudioLux {
 	void setVizHueVisualization() {
 		initEffect();
 		viz = new HueVisualization(input, NUM_LEDS);
+		// aim = new CircleAnimation(viz, ledstrip.leds, NUM_LEDS);
+		looper->addVisualization(viz);
+	}
+
+	void setFireVisualization() {
+		initEffect();
+		viz = new FireVisualization(input, NUM_LEDS);
 		looper->addVisualization(viz);
 	}
 
@@ -66,6 +74,7 @@ AudioLux audioLux;
 
 static const char _data_FX_mode_TwinkleVisualization[] PROGMEM = "AudioLux - Twinkle";
 static const char _data_FX_mode_HueVisualization[] PROGMEM = "AudioLux - Hue";
+static const char _data_FX_mode_FireVisualization[] PROGMEM = "AudioLux - Fire";
 
 
 uint16_t mode_TwinkleVisualization() { 
@@ -84,6 +93,14 @@ uint16_t mode_HueVisualization() {
 	return FRAMETIME;
 }
 
+uint16_t mode_FireVisualization() { 
+	if (SEGENV.call == 0) {
+		audioLux.setFireVisualization();
+	}
+	audioLux.loop();
+	return FRAMETIME;
+}
+
 
 class AudioLuxUsermod : public Usermod {
 
@@ -97,6 +114,7 @@ class AudioLuxUsermod : public Usermod {
 
       	strip.addEffect(255, &mode_TwinkleVisualization, _data_FX_mode_TwinkleVisualization);
       	strip.addEffect(255, &mode_HueVisualization, _data_FX_mode_HueVisualization);
+      	strip.addEffect(255, &mode_FireVisualization, _data_FX_mode_FireVisualization);
 
 		initDone = true;
     }
