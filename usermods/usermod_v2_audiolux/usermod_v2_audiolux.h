@@ -15,10 +15,10 @@ class AudioLux {
 
 	int NUM_LEDS;
 	LEDStrip ledstrip = LEDStrip(NUM_LEDS);
-	// LEDs alleds;
 	Input* input;
 	Visualization* viz;
-	TriangleAnimation* anim;
+	// TriangleAnimation* anim;
+	Looper* looper = Looper::instance();
 
 	public:
 
@@ -29,25 +29,34 @@ class AudioLux {
 		NUM_LEDS = SEGMENT.virtualWidth() * SEGMENT.virtualHeight();
 
 		ledstrip = LEDStrip(NUM_LEDS);
-		// alleds = LEDs(&ledstrip, 0, NUM_LEDS);
 
 		input = new RandomInput();
 
 		// Add all the components to the looper so they update every frame
-		Looper* looper = Looper::instance();
+		
 		looper->clearAll();
 		looper->addInput(input);
-		looper->addVisualization(viz);
-		looper->addAnimation(anim);
+		// looper->addAnimation(anim);
 		// looper->setUpdatesPerSecond(30);
 	}
 
 	void setVizTwinkleVisualization() {
+		initEffect();
 		viz = new TwinkleVisualization(input, NUM_LEDS);
+		looper->addVisualization(viz);
+	}
+
+	void setVizHueVisualization() {
+		initEffect();
+		viz = new HueVisualization(input, NUM_LEDS);
+		looper->addVisualization(viz);
 	}
 
 	void loop() {
 		Looper::instance()->loop();
+		for(int i = 0; i < NUM_LEDS; i++) {
+			SEGMENT.setPixelColor(i, ledstrip.leds[i]); // TODO: UGLY copy for now
+		}
 	}
 };
 
