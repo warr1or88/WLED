@@ -15,6 +15,7 @@ class AudioLux {
 
 	int NUM_LEDS;
 	LEDStrip ledstrip = LEDStrip(NUM_LEDS);
+	LEDs leds = LEDs(&ledstrip, 0, 0, false);
 	Input* input;
 	Visualization* viz;
 	Animation* anim;
@@ -29,6 +30,7 @@ class AudioLux {
 		NUM_LEDS = SEGMENT.virtualWidth() * SEGMENT.virtualHeight();
 
 		ledstrip = LEDStrip(NUM_LEDS);
+		leds = LEDs(&ledstrip, 0, NUM_LEDS, false);
 
 		input = new RandomInput();
 
@@ -50,8 +52,9 @@ class AudioLux {
 	void setVizHueVisualization() {
 		initEffect();
 		viz = new HueVisualization(input, NUM_LEDS);
-		// aim = new CircleAnimation(viz, ledstrip.leds, NUM_LEDS);
+		anim = new PassThroughAnimation(viz, leds);
 		looper->addVisualization(viz);
+		looper->addAnimation(anim);
 	}
 
 	void setFireVisualization() {
