@@ -13,7 +13,7 @@ using namespace pixl;
 
 class WLEDAudioInput : public Input {
   public:
-    WLEDAudioInput();
+    WLEDAudioInput(){}
     void update() {
 		if (!usermods.getUMData(&um_data, USERMOD_ID_AUDIOREACTIVE)) {
 			// add support for no audio
@@ -22,8 +22,10 @@ class WLEDAudioInput : public Input {
 	}
     float getInput(int index = 0) {
 		if (index == 0) {
-			uint8_t samplePeak = *(uint8_t*)um_data->u_data[3];
-			return map((samplePeak * 4), 0 1020, 0, 1000) / 1000;
+			float volume = *(float*)um_data->u_data[0];
+			float value = (float) map((volume * 4), 0, 1020, 0, 1000) / 1000.0f;
+			if(value > 0) Serial.println(value);
+			return value;
 		} else if (index == 1) {
 			uint8_t *fftResult = (uint8_t*) um_data->u_data[2];
 			return 0.0; // TODO map 0-255 to expected range - https://github.com/netmindz/Audiolux/blob/81056ab8f59cb4a801b541ba57a62786b4b93a73/msgeq7.cpp#L39
@@ -56,25 +58,31 @@ class AudioLux {
 		ledstrip = LEDStrip(NUM_LEDS);
 		leds = LEDs(&ledstrip, 0, NUM_LEDS, false);
 
-		input = new RandomInput();
-
 		// Add all the components to the looper so they update every frame
 		
 		looper->clearAll();
 		delete viz;
 		delete anim;
-		looper->addInput(input);
-		// looper->setUpdatesPerSecond(30);
+		delete input;
+		looper->setUpdatesPerSecond(40);
 	}
 
 	void setVizTwinkleVisualization() {
 		initEffect();
+
+		input = new NullInput();
+		looper->addInput(input);
+
 		viz = new TwinkleVisualization(input, NUM_LEDS);
 		looper->addVisualization(viz);
 	}
 
 	void setVizHueVisualization() {
 		initEffect();
+
+		input = new RandomInput();
+		looper->addInput(input);
+
 		viz = new HueVisualization(input, NUM_LEDS);
 		anim = new PassThroughAnimation(viz, leds);
 		looper->addVisualization(viz);
@@ -83,6 +91,20 @@ class AudioLux {
 
 	void setFireVisualization() {
 		initEffect();
+
+		input = new RandomInput();
+		looper->addInput(input);
+
+		viz = new FireVisualization(input, NUM_LEDS);
+		looper->addVisualization(viz);
+	}
+
+	void setAudioFireVisualization() {
+		initEffect();
+
+		input = new WLEDAudioInput();
+		looper->addInput(input);
+
 		viz = new FireVisualization(input, NUM_LEDS);
 		looper->addVisualization(viz);
 	}
@@ -102,6 +124,7 @@ AudioLux audioLux;
 static const char _data_FX_mode_TwinkleVisualization[] PROGMEM = "AudioLux - Twinkle";
 static const char _data_FX_mode_HueVisualization[] PROGMEM = "AudioLux - Hue";
 static const char _data_FX_mode_FireVisualization[] PROGMEM = "AudioLux - Fire";
+static const char _data_FX_mode_AudioFireVisualization[] PROGMEM = "AudioLux - AudioFire";
 
 
 uint16_t mode_TwinkleVisualization() { 
@@ -128,6 +151,14 @@ uint16_t mode_FireVisualization() {
 	return FRAMETIME;
 }
 
+uint16_t mode_AudioFireVisualization() { 
+	if (SEGENV.call == 0) {
+		audioLux.setAudioFireVisualization();
+	}
+	audioLux.loop();
+	return FRAMETIME;
+}
+
 
 class AudioLuxUsermod : public Usermod {
 
@@ -142,6 +173,7 @@ class AudioLuxUsermod : public Usermod {
       	strip.addEffect(255, &mode_TwinkleVisualization, _data_FX_mode_TwinkleVisualization);
       	strip.addEffect(255, &mode_HueVisualization, _data_FX_mode_HueVisualization);
       	strip.addEffect(255, &mode_FireVisualization, _data_FX_mode_FireVisualization);
+      	strip.addEffect(255, &mode_AudioFireVisualization, _data_FX_mode_AudioFireVisualization);
 
 		initDone = true;
     }
