@@ -11,6 +11,30 @@ using namespace pixl;
 
 //========================================================================================================================
 
+class WLEDAudioInput : public Input {
+  public:
+    WLEDAudioInput();
+    void update() {
+		if (!usermods.getUMData(&um_data, USERMOD_ID_AUDIOREACTIVE)) {
+			// add support for no audio
+			um_data = simulateSound(SEGMENT.soundSim);
+		}
+	}
+    float getInput(int index = 0) {
+		if (index == 0) {
+			uint8_t samplePeak = *(uint8_t*)um_data->u_data[3];
+			return 0.0; // TODO map 0-255 to expected range
+		} else if (index == 1) {
+			uint8_t *fftResult = (uint8_t*) um_data->u_data[2];
+			return 0.0; // TODO map 0-255 to expected range
+		} else {
+			return 0.0;
+		}
+	}
+  private:
+    um_data_t *um_data;
+};
+
 class AudioLux {
 
 	int NUM_LEDS;
