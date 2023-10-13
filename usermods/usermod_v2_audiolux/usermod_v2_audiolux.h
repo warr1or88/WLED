@@ -23,10 +23,10 @@ class WLEDAudioInput : public Input {
     float getInput(int index = 0) {
 		if (index == 0) {
 			uint8_t samplePeak = *(uint8_t*)um_data->u_data[3];
-			return 0.0; // TODO map 0-255 to expected range
+			return map((samplePeak * 4), 0 1020, 0, 1000) / 1000;
 		} else if (index == 1) {
 			uint8_t *fftResult = (uint8_t*) um_data->u_data[2];
-			return 0.0; // TODO map 0-255 to expected range
+			return 0.0; // TODO map 0-255 to expected range - https://github.com/netmindz/Audiolux/blob/81056ab8f59cb4a801b541ba57a62786b4b93a73/msgeq7.cpp#L39
 		} else {
 			return 0.0;
 		}
