@@ -2735,6 +2735,8 @@ class AudioReactive : public Usermod {
         oappend(SET_F("xOpt('AudioReactive:digitalmic:pin[]',5,' ⎌',")); oappendi(ES7243_SCLPIN); oappend(");"); 
       #endif
       oappend(SET_F("dRO('AudioReactive:digitalmic:pin[]',5);")); // disable read only pins
+      oappend(SET_F("disableElement('AudioReactive:digitalmic:pin[]',4);"));
+      oappend(SET_F("disableElement('AudioReactive:digitalmic:pin[]',5);"));
 #endif      
     }
 
