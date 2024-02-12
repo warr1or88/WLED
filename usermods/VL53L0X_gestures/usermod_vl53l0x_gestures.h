@@ -50,12 +50,21 @@ class UsermodVL53L0XGestures : public Usermod {
   public:
 
     void setup() {
-      if (i2c_scl<0 || i2c_sda<0) { enabled = false; return; }
+      // WLEDMM join hardware I2C
+      if (!pinManager.joinWire()) {  // WLEDMM - this allocates global I2C pins, then starts Wire - if not started previously
+        enabled = false;
+        return;
+      }
+
+      //PinManagerPinType pins[2] = { { i2c_scl, true }, { i2c_sda, true } };
+      //if (!pinManager.allocateMultiplePins(pins, 2, PinOwner::HW_I2C)) { enabled = false; return; }
+      //Wire.begin();
 
       sensor.setTimeout(150);
       if (!sensor.init())
       {
         DEBUG_PRINTLN(F("Failed to detect and initialize VL53L0X sensor!"));
+        enabled = false;      // WLEDMM bugfix
       } else {
         sensor.setMeasurementTimingBudget(20000); // set high speed mode
       }

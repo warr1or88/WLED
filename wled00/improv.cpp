@@ -201,16 +201,16 @@ void sendImprovInfoResponse() {
     #elif CONFIG_IDF_TARGET_ESP32S2
       "esp32-s2"
     #elif CONFIG_IDF_TARGET_ESP32S3
-      "esp32-s3";
+      "esp32-s3"
     #else // ESP32
-      "esp32";
+      "esp32"
     #endif
     ;
 
   //Use serverDescription if it has been changed from the default "WLED", else mDNS name
   bool useMdnsName = (strcmp(serverDescription, "WLED") == 0 && strlen(cmDNS) > 0);
-  char vString[20];
-  sprintf_P(vString, PSTR("0.14.1/%i"), VERSION);
+  char vString[32];
+  snprintf_P(vString, sizeof(vString)-1, PSTR("0.14.1.beta.37/%i"),VERSION);
   const char *str[4] = {"WLED", vString, bString, useMdnsName ? cmDNS : serverDescription};
 
   sendImprovRPCResult(ImprovRPCType::Request_Info, 4, str);
