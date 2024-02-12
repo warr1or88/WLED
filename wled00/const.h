@@ -507,36 +507,37 @@
   #define HW_PIN_SDA SDA
 #endif
 
+/// HW_PIN_SCL & HW_PIN_SDA are used for information in usermods settings page and usermods themselves
+// which GPIO pins are actually used in a hardware layout (controller board)
+//WLEDMM: unchangeable pins are not treated here by undef them, but elsewhere in the code 
+// defaults for 1st I2C on ESP32 (Wire global)
+#ifndef HW_PIN_SCL
+  #define HW_PIN_SCL -1 //WLEDMM if not defined, -1 will be used (not SCL/22) (also for esp8266?)
+#endif
+#ifndef HW_PIN_SDA
+  #define HW_PIN_SDA -1 //WLEDMM if not defined, -1 will be used (not SDA/21) (also for esp8266?)
+#endif
+
 // HW_PIN_SCLKSPI & HW_PIN_MOSISPI & HW_PIN_MISOSPI are used for information in usermods settings page and usermods themselves
 // which GPIO pins are actually used in a hardware layout (controller board)
-#if defined(SPISCLKPIN) && !defined(HW_PIN_CLOCKSPI)
-  #define HW_PIN_CLOCKSPI SPISCLKPIN
-#endif
-#if defined(SPIMOSIPIN) && !defined(HW_PIN_MOSISPI)
-  #define HW_PIN_MOSISPI SPIMOSIPIN
-#endif
-#if defined(SPIMISOPIN) && !defined(HW_PIN_MISOSPI)
-  #define HW_PIN_MISOSPI SPIMISOPIN
-#endif
-// you cannot change HW SPI pins on 8266
-#if defined(ESP8266) && defined(HW_PIN_CLOCKSPI)
-  #undef HW_PIN_CLOCKSPI
-#endif
-#if defined(ESP8266) && defined(HW_PIN_DATASPI)
-  #undef HW_PIN_DATASPI
-#endif
-#if defined(ESP8266) && defined(HW_PIN_MISOSPI)
-  #undef HW_PIN_MISOSPI
-#endif
+//WLEDMM: unchangeable pins are not treated here by undef them, but elsewhere in the code 
 // defaults for VSPI on ESP32 (SPI global, SPI.cpp) as HSPI is used by WLED (bus_wrapper.h)
 #ifndef HW_PIN_CLOCKSPI
-  #define HW_PIN_CLOCKSPI SCK
+  #define HW_PIN_CLOCKSPI -1 //WLEDMM if not defined -1 will be used (not SCK/18)
 #endif
-#ifndef HW_PIN_DATASPI
-  #define HW_PIN_DATASPI MOSI
+#ifndef HW_PIN_MOSISPI  //WLEDMM renamed from HW_PIN_DATASPI
+  #define HW_PIN_MOSISPI -1 //WLEDMM if not defined -1 will be used (not MOSI/23)
 #endif
 #ifndef HW_PIN_MISOSPI
-  #define HW_PIN_MISOSPI MISO
+  #define HW_PIN_MISOSPI -1 //WLEDMM if not defined -1 will be used (not MISO/19)
+#endif
+
+// WLEDMM: IRAM_ATTR for 8266 causes error: section `.text1' will not fit in region `iram1_0_seg'
+//         error only in MM, not in upstream... tbd: find out why
+#ifdef ARDUINO_ARCH_ESP32
+  #define IRAM_ATTR_YN IRAM_ATTR
+#else
+  #define IRAM_ATTR_YN
 #endif
 
 #endif
