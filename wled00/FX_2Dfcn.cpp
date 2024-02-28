@@ -172,12 +172,49 @@ void WS2812FX::setUpMatrix() {
 #endif
 }
 
+
+// experimental: spinning matrix hack
+// will optimized the code later
+static float sinrot = 0.0f;
+static float cosrot = 1.0f;
+static unsigned long last_millis = UINT_MAX;
+
+static uint_fast16_t spinXY(uint_fast16_t x, uint_fast16_t y, uint_fast16_t width, uint_fast16_t height) {
+  if ((millis()/12) !=  last_millis) {
+    // update sin / cos for rotation - once each 12ms
+    float now = float(millis()/12) / 160.0f;  // this sets the rotation speed
+    //float now = float(strip.now) / 2000.0f;  // error: 'strip' was not declared in this scope
+    sinrot = sinf(now);
+    cosrot = cosf(now);
+    last_millis = millis()/12;
+  }
+  // center
+  int x1 = int(x) - width/2;
+  int y1 = int(y) - height/2;
+  // matrix mult for rotation
+  float x2 = float(x1) * cosrot - float(y1) * sinrot;
+  float y2 = float(x1) * sinrot + float(y1) * cosrot;
+  // un-center
+  int x3 = lround(x2) + width/2;
+  int y3 = lround(y2) + height/2;
+  // check bounds
+  if ((x3 <0) || (x3 >= width) || (y3 <0) || (y3 >= height)) return UINT16_MAX; // outside of matrix
+  // deliver fish
+  else return (x3%width) + (y3%height) * width;
+}
+
+
 // absolute matrix version of setPixelColor()
 void IRAM_ATTR_YN WS2812FX::setPixelColorXY(int x, int y, uint32_t col) //WLEDMM: IRAM_ATTR conditionally
 {
 #ifndef WLED_DISABLE_2D
   if (!isMatrix) return; // not a matrix set-up
+#if 1
+  // use rotation hack
+  uint_fast16_t index = spinXY(x, y,  Segment::maxWidth,  Segment::maxHeight);
+#else
   uint_fast16_t index = y * Segment::maxWidth + x;
+#endif
 #else
   uint16_t index = x;
 #endif
@@ -189,7 +226,12 @@ void IRAM_ATTR_YN WS2812FX::setPixelColorXY(int x, int y, uint32_t col) //WLEDMM
 // returns RGBW values of pixel
 uint32_t WS2812FX::getPixelColorXY(uint16_t x, uint16_t y) {
 #ifndef WLED_DISABLE_2D
+#if 1
+  // use rotation hack
+  uint_fast16_t index = spinXY(x, y,  Segment::maxWidth,  Segment::maxHeight);
+#else
   uint_fast16_t index = (y * Segment::maxWidth + x); //WLEDMM: use fast types
+#endif
 #else
   uint16_t index = x;
 #endif
