@@ -172,12 +172,17 @@ void WS2812FX::setUpMatrix() {
 #endif
 }
 
-
+// ************************************
 // experimental: spinning matrix hack
 // will optimized the code later
+// ************************************
 static float sinrot = 0.0f;
 static float cosrot = 1.0f;
 static unsigned long last_millis = UINT_MAX;
+
+constexpr float projScaleMax = 1.0f;   // full size
+constexpr float projScaleMin = 0.701f; // 1/sqrt(2)
+static float projScale = projScaleMax;
 
 static uint_fast16_t spinXY(uint_fast16_t x, uint_fast16_t y, uint_fast16_t width, uint_fast16_t height) {
   if ((millis()/12) !=  last_millis) {
@@ -187,6 +192,11 @@ static uint_fast16_t spinXY(uint_fast16_t x, uint_fast16_t y, uint_fast16_t widt
     sinrot = sinf(now);
     cosrot = cosf(now);
     last_millis = millis()/12;
+    // scale to fit - comment out the next lines to disable
+    float maxProj = max(abs(width/2 * sinrot), abs(height/2 * cosrot));
+    int maxdim = max(width/2, height/2);
+    float newScaling = maxProj / float(maxdim);
+    projScale = max(min(newScaling, projScaleMax), projScaleMin);
   }
   // center
   int x1 = int(x) - width/2;
@@ -195,8 +205,8 @@ static uint_fast16_t spinXY(uint_fast16_t x, uint_fast16_t y, uint_fast16_t widt
   float x2 = float(x1) * cosrot - float(y1) * sinrot;
   float y2 = float(x1) * sinrot + float(y1) * cosrot;
   // un-center
-  int x3 = lround(x2) + width/2;
-  int y3 = lround(y2) + height/2;
+  int x3 = lround(x2 * projScale) + width/2;  // projScale adds some down-scaling,
+  int y3 = lround(y2 * projScale) + height/2; //     so everything fits fully into the original matrix. Note to self: this is still sub-optimal.
   // check bounds
   if ((x3 <0) || (x3 >= width) || (y3 <0) || (y3 >= height)) return UINT16_MAX; // outside of matrix
   // deliver fish
