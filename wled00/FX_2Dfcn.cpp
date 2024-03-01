@@ -213,6 +213,18 @@ static uint_fast16_t spinXY(uint_fast16_t x, uint_fast16_t y, uint_fast16_t widt
   else return (x3%width) + (y3%height) * width;
 }
 
+// WLEDMM: setPixelColorXY without spinXY part.
+void WS2812FX::DOsetPixelColorXY(int x, int y, uint32_t col) {
+  //if (!isMatrix) return; // not a matrix set-up
+  if ((x<0) || (y<0)) return;
+  if (x >= Segment::maxWidth) return;
+  if (y >= Segment::maxHeight) return;
+  uint_fast16_t index = y * Segment::maxWidth + x;
+  if (index < customMappingSize) index = customMappingTable[index];
+  if (index >= _length) return;
+  //if (busses.getPixelColor(index) != col) busses.setPixelColor(index, col);
+  busses.setPixelColor(index, col);
+}
 
 // absolute matrix version of setPixelColor()
 void IRAM_ATTR_YN WS2812FX::setPixelColorXY(int x, int y, uint32_t col) //WLEDMM: IRAM_ATTR conditionally
@@ -236,6 +248,7 @@ void IRAM_ATTR_YN WS2812FX::setPixelColorXY(int x, int y, uint32_t col) //WLEDMM
 // returns RGBW values of pixel
 uint32_t WS2812FX::getPixelColorXY(uint16_t x, uint16_t y) {
 #ifndef WLED_DISABLE_2D
+  if ((x<0) || (y<0)) return 0; // WLEDMM fix array out of bounds access
 #if 1
   // use rotation hack
   uint_fast16_t index = spinXY(x, y,  Segment::maxWidth,  Segment::maxHeight);

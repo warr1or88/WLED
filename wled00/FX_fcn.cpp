@@ -1748,6 +1748,7 @@ void WS2812FX::service() {
 
 void IRAM_ATTR WS2812FX::setPixelColor(int i, uint32_t col)
 {
+  if (i < 0) return; // WLEDMM avoid acessing array out of bounds
   if (i < customMappingSize) i = customMappingTable[i];
   if (i >= _length) return;
   busses.setPixelColor(i, col);
