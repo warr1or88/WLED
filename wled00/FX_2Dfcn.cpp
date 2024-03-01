@@ -172,17 +172,20 @@ void WS2812FX::setUpMatrix() {
 #endif
 }
 
-// ************************************
+// *****************************************
 // experimental: spinning matrix hack
-// will optimized the code later
-// ************************************
+// will optimized and cleanup the code later
+// *****************************************
 
 // FLAGS to change behaviour
+//#define SPIN_OFF                 // no spinning - for performance comparison
 //#define SPIN_AUTOZOOM            // define to get the zoom-in/zoom-out effect
 //#define SPIN_AROUND_TOP          // define to spin around top center (instead of x/y center)
 //#define SPIN_FIXTURE_ONLY        // define rotate the fixture as one, instead of spinning individual segments
 //#define SPIN_DISABLE_AA          // define to disable filling holes between pixels ==> Faster. 
 //#define SPIN_NO_CLEAR_BACKGROUND // define to not clear the "background" before drawing a new frame
+//#define SPIN_SMOOTH_EDGES        // define to enable 1D quick & dirty edge smoothing. Sometimes creates artefacts, as it does not know about "2D". 
+                                   //   -> Looks nice with "Polar Lights", "octopus" or "Julia"
 
 static float sinrot = 0.0f;
 static float cosrot = 1.0f;
@@ -266,15 +269,44 @@ static uint_fast16_t spinXY(uint_fast16_t x, uint_fast16_t y, uint_fast16_t widt
 // public functions
 
 void WS2812FX::beginFrame(void) {
-#ifndef SPIN_NO_CLEAR_BACKGROUND
+#if !defined(SPIN_NO_CLEAR_BACKGROUND) && !defined(SPIN_OFF)
   fill(BLACK);
 #endif
   spinTime(Segment::maxWidth, Segment::maxHeight);
+#if !defined(SPIN_OFF)
   useRotation = true;
+#endif
 }
 void WS2812FX::endFrame(void) {
   useRotation = false;
   noCanvas();
+#if defined(SPIN_SMOOTH_EDGES)
+  smoothEdges();
+#endif
+}
+
+void WS2812FX::smoothEdges(void) {
+  // edge smoothing as a postprocess, quick & dirty, 1D
+  // we scan over all pixels, looking for edges where lightness rises or falls strongly. Then lighten up the lower brightness side.
+  if (bri < 48) return;        // brightness too low
+  useRotation = false;         // work on raw pixels
+  unsigned edgeLuma = bri / 4; // min brightness of edge
+  constexpr unsigned edgeBlur = 56; // amount of "fading" on edges, range 0..255
+
+  CRGB prev = CRGB(getPixelColor(0));
+  unsigned llen = getLengthTotal();
+  for (unsigned i=1; i < llen; i++) {
+    CRGB now = CRGB(getPixelColor(i));
+    unsigned luma = now.getAverageLight();
+    unsigned preLuma = prev.getAverageLight();
+
+    if ((luma > edgeLuma) && (luma > preLuma) && ((preLuma < 2) || (luma / preLuma) > 2))
+      setPixelColor(i-1, prev.lerp8(now, edgeBlur));  // brightness goes up by over 50% -> left + 22%
+    else if ((preLuma > edgeLuma) && (preLuma > luma) && ((luma < 2) || (preLuma / luma) > 2))
+      setPixelColor(i, now.lerp8(prev, edgeBlur));  // brightness goes down by over 50% -> right + 22%
+
+    prev = now;
+  }
 }
 
 void WS2812FX::setCanvas(int xStart, int xWidth, int yStart, int yHeight) {
@@ -289,7 +321,9 @@ void WS2812FX::setCanvas(int xStart, int xWidth, int yStart, int yHeight) {
   segStartY=0;
   segHeight=Segment::maxHeight;
 #endif
+#if !defined(SPIN_OFF)
   useRotation = true;
+#endif
 }
 
 void WS2812FX::noCanvas(void) {
