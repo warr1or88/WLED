@@ -179,7 +179,10 @@ void WS2812FX::setUpMatrix() {
 
 // FLAGS to change behaviour
 //#define SPIN_AUTOZOOM            // define to get the zoom-in/zoom-out effect
+//#define SPIN_AROUND_TOP          // define to spin around top center (instead of x/y center)
 //#define SPIN_FIXTURE_ONLY        // define rotate the fixture as one, instead of spinning individual segments
+//#define SPIN_DISABLE_AA          // define to disable filling holes between pixels ==> Faster. 
+//#define SPIN_NO_CLEAR_BACKGROUND // define to not clear the "background" before drawing a new frame
 
 static float sinrot = 0.0f;
 static float cosrot = 1.0f;
@@ -229,6 +232,29 @@ static uint_fast16_t spinXY(uint_fast16_t x, uint_fast16_t y, uint_fast16_t widt
   x3 = x3 + segStart;
   y3 = y3 + segStartY;
 
+  #if defined(SPIN_AROUND_TOP)  // we need to add the pixel below to compensate for up-scaling
+    if (AAPixel && col>0) strip.DOsetPixelColorXY(x3, y3+1, /*PINK*/ col);
+  #endif
+  #if !defined(SPIN_DISABLE_AA)
+  // poor man's anti-aliasing : set neighbor pixels if "real" and "integer" position deviate by more than 0.25
+  // before you ask - I'm aware that this is an abuse of the "spinXY" function
+  if ((AAPixel) && (col > 0)) {  // optimization: skip if pixel is black
+    bool fix = false;
+    float x4 = x2 - roundf(x2);
+    if ((x3 > segStart) && (x4 <= -0.25f))                 {fix = true; strip.DOsetPixelColorXY(x3-1, y3, /*GREEN*/ col);}    // left pixel
+    //else if ((x3 < (segStart + segWidth-1)) && (x4 >= 0.25f))   {fix = true; strip.DOsetPixelColorXY(x3+1, y3, /*RED*/ col);} // right pixel - usually not needed
+    #if !defined(SPIN_AROUND_TOP)  // we need to add pixels below to compensate for up-scaling
+    if (!fix) {
+      float y4 = y2 - roundf(y2);
+      if ((y3 > segStartY) && (y4 <= -0.25f))                strip.DOsetPixelColorXY(x3, y3-1, /*YELLOW*/ col);   // upper pixel
+      //else if ((y3 < (segStartY + segHeight-1)) && (y4 >= 0.25f)) strip.DOsetPixelColorXY(x3, y3+1, /*PINK*/ col);     // lower pixel
+    }
+    #else
+    float y4 = y2 - roundf(y2);
+    if ((y3 > segStartY) && (y4 <= -0.125f))                strip.DOsetPixelColorXY(x3, y3-1, /*YELLOW*/ col);   // upper pixel - lower is always set
+    #endif
+  }
+  #endif
   // deliver fish
   return (x3%width) + (y3%height) * width;
 }
