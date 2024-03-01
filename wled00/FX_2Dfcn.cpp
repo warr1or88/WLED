@@ -223,9 +223,13 @@ static uint_fast16_t spinXY(uint_fast16_t x, uint_fast16_t y, uint_fast16_t widt
   float x2 = float(x1) * cosrot - float(y1) * sinrot;
   float y2 = float(x1) * sinrot + float(y1) * cosrot;
   // un-center
+#if defined(SPIN_AROUND_TOP)
+  int x3 = lround(x2) + segWidth/2;
+  int y3 = lround(y2 * 2.0f);
+#else
   int y3 = lround(y2) + segHeight/2;
   int x3 = lround(x2) + segWidth/2;
-
+#endif
   // check bounds
   if ((x3 <0) || (x3 >= segWidth) || (y3 <0) || (y3 >= segHeight)) return UINT16_MAX; // outside of matrix
   // move to segment start
