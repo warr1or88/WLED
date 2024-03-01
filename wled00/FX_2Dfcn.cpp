@@ -176,41 +176,98 @@ void WS2812FX::setUpMatrix() {
 // experimental: spinning matrix hack
 // will optimized the code later
 // ************************************
+
+// FLAGS to change behaviour
+//#define SPIN_AUTOZOOM            // define to get the zoom-in/zoom-out effect
+//#define SPIN_FIXTURE_ONLY        // define rotate the fixture as one, instead of spinning individual segments
+
 static float sinrot = 0.0f;
 static float cosrot = 1.0f;
-static unsigned long last_millis = UINT_MAX;
-
 constexpr float projScaleMax = 1.0f;   // full size
 constexpr float projScaleMin = 0.701f; // 1/sqrt(2)
-static float projScale = projScaleMax;
+static float projScale = 0.9f;
 
-static uint_fast16_t spinXY(uint_fast16_t x, uint_fast16_t y, uint_fast16_t width, uint_fast16_t height) {
-  if ((millis()/12) !=  last_millis) {
-    // update sin / cos for rotation - once each 12ms
-    float now = float(millis()/12) / 160.0f;  // this sets the rotation speed
-    //float now = float(strip.now) / 2000.0f;  // error: 'strip' was not declared in this scope
+static bool useRotation = false;
+static int segStart=0;
+static int segWidth=0;
+static int segStartY=0;
+static int segHeight=0;
+
+// update sin / cos for rotation - once each frame
+static void spinTime(uint_fast16_t width, uint_fast16_t height) {
+    float now = float(millis()) / 1300.0f;  // this sets the rotation speed
+    //float now = float(millis()) / 3500.0f;  // for testing (slower)
+    // pre-compute rotation factors
     sinrot = sinf(now);
     cosrot = cosf(now);
-    last_millis = millis()/12;
-    // scale to fit - comment out the next lines to disable
+    // scale to fit
+    #if defined(SPIN_AUTOZOOM)
     float maxProj = max(abs(width/2 * sinrot), abs(height/2 * cosrot));
     int maxdim = max(width/2, height/2);
     float newScaling = maxProj / float(maxdim);
     projScale = max(min(newScaling, projScaleMax), projScaleMin);
-  }
+    #endif
+    // include scale / zoom
+    sinrot *= projScale;
+    cosrot *= projScale;
+}
+
+static uint_fast16_t spinXY(uint_fast16_t x, uint_fast16_t y, uint_fast16_t width, uint_fast16_t height, bool AAPixel = false, int32_t col = 0) {
   // center
-  int x1 = int(x) - width/2;
-  int y1 = int(y) - height/2;
-  // matrix mult for rotation
+  int x1 = int(x) - segStart - (segWidth/2);
+  int y1 = int(y) - segStartY - (segHeight/2);
+  // matrix mult for rotation and scaling
   float x2 = float(x1) * cosrot - float(y1) * sinrot;
   float y2 = float(x1) * sinrot + float(y1) * cosrot;
   // un-center
-  int x3 = lround(x2 * projScale) + width/2;  // projScale adds some down-scaling,
-  int y3 = lround(y2 * projScale) + height/2; //     so everything fits fully into the original matrix. Note to self: this is still sub-optimal.
+  int y3 = lround(y2) + segHeight/2;
+  int x3 = lround(x2) + segWidth/2;
+
   // check bounds
-  if ((x3 <0) || (x3 >= width) || (y3 <0) || (y3 >= height)) return UINT16_MAX; // outside of matrix
+  if ((x3 <0) || (x3 >= segWidth) || (y3 <0) || (y3 >= segHeight)) return UINT16_MAX; // outside of matrix
+  // move to segment start
+  x3 = x3 + segStart;
+  y3 = y3 + segStartY;
+
   // deliver fish
-  else return (x3%width) + (y3%height) * width;
+  return (x3%width) + (y3%height) * width;
+}
+
+// public functions
+
+void WS2812FX::beginFrame(void) {
+#ifndef SPIN_NO_CLEAR_BACKGROUND
+  fill(BLACK);
+#endif
+  spinTime(Segment::maxWidth, Segment::maxHeight);
+  useRotation = true;
+}
+void WS2812FX::endFrame(void) {
+  useRotation = false;
+  noCanvas();
+}
+
+void WS2812FX::setCanvas(int xStart, int xWidth, int yStart, int yHeight) {
+#if !defined(SPIN_FIXTURE_ONLY)
+  segStart=xStart;
+  segWidth=xWidth;
+  segStartY=yStart;
+  segHeight=yHeight;
+#else
+  segStart=0;
+  segWidth=Segment::maxWidth;
+  segStartY=0;
+  segHeight=Segment::maxHeight;
+#endif
+  useRotation = true;
+}
+
+void WS2812FX::noCanvas(void) {
+  segStart=0;
+  segWidth=Segment::maxWidth;
+  segStartY=0;
+  segHeight=Segment::maxHeight;
+  useRotation = false;
 }
 
 // WLEDMM: setPixelColorXY without spinXY part.
@@ -231,12 +288,12 @@ void IRAM_ATTR_YN WS2812FX::setPixelColorXY(int x, int y, uint32_t col) //WLEDMM
 {
 #ifndef WLED_DISABLE_2D
   if (!isMatrix) return; // not a matrix set-up
-#if 1
   // use rotation hack
-  uint_fast16_t index = spinXY(x, y,  Segment::maxWidth,  Segment::maxHeight);
-#else
-  uint_fast16_t index = y * Segment::maxWidth + x;
-#endif
+  uint_fast16_t index;
+  if (useRotation)
+    index = spinXY(x, y,  Segment::maxWidth,  Segment::maxHeight, true, col);
+  else
+    index = y * Segment::maxWidth + x;
 #else
   uint16_t index = x;
 #endif
@@ -249,12 +306,12 @@ void IRAM_ATTR_YN WS2812FX::setPixelColorXY(int x, int y, uint32_t col) //WLEDMM
 uint32_t WS2812FX::getPixelColorXY(uint16_t x, uint16_t y) {
 #ifndef WLED_DISABLE_2D
   if ((x<0) || (y<0)) return 0; // WLEDMM fix array out of bounds access
-#if 1
   // use rotation hack
-  uint_fast16_t index = spinXY(x, y,  Segment::maxWidth,  Segment::maxHeight);
-#else
-  uint_fast16_t index = (y * Segment::maxWidth + x); //WLEDMM: use fast types
-#endif
+  uint_fast16_t index;
+  if (useRotation)
+    index = spinXY(x, y,  Segment::maxWidth,  Segment::maxHeight, false);
+  else
+    index = y * Segment::maxWidth + x;
 #else
   uint16_t index = x;
 #endif

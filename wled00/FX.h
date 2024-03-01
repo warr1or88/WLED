@@ -833,6 +833,11 @@ class WS2812FX {  // 96 bytes
     void addEffect(uint8_t id, mode_ptr mode_fn, const char *mode_name); // add effect to the list; defined in FX.cpp
     void setupEffectData(void); // add default effects to the list; defined in FX.cpp
 
+    // WLEDMM rotating matrix hack
+    void beginFrame(void); // advance rotation time, enable spin, clear pixels
+    void endFrame(void); // disable spin
+    void setCanvas(int xStart, int xWidth, int yStart, int yHeight);
+    void noCanvas(void);
     void DOsetPixelColorXY(int x, int y, uint32_t col); // set without mapping
     // outsmart the compiler :) by correctly overloading
     inline void setPixelColor(int n, uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0) { setPixelColor(n, RGBW32(r,g,b,w)); }

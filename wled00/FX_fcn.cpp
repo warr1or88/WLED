@@ -1699,6 +1699,9 @@ void WS2812FX::service() {
 
   _isServicing = true;
   _segment_index = 0;
+
+  strip.beginFrame();           // WLEDMM spin hack: advance rotation time, resets canvas size, enables translations / rotations
+
   for (segment &seg : _segments) {
     // reset the segment runtime data if needed
     seg.resetIfRequired();
@@ -1725,6 +1728,12 @@ void WS2812FX::service() {
         // effect blending (execute previous effect)
         // actual code may be a bit more involved as effects have runtime data including allocated memory
         //if (seg.transitional && seg._modeP) (*_mode[seg._modeP])(progress());
+
+        if (seg.is2D() && (seg.mode != FX_MODE_2DSCROLLTEXT))  // WLEDMM don't spin scrolling text
+          strip.setCanvas(seg.start, seg.width(), seg.startY, seg.height());
+        else
+          strip.noCanvas();
+
         frameDelay = (*_mode[seg.currentMode(seg.mode)])();
         if (seg.mode != FX_MODE_HALLOWEEN_EYES) seg.call++;
         if (seg.transitional && frameDelay > FRAMETIME) frameDelay = FRAMETIME; // force faster updates during transition
@@ -1737,6 +1746,9 @@ void WS2812FX::service() {
     _segment_index++;
   }
   _virtualSegmentLength = 0;
+
+  strip.endFrame(); // resets canvas size, disables translations / rotations (=use real pixels)
+
   busses.setSegmentCCT(-1);
   if(doShow) {
     yield();
