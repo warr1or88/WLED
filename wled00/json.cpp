@@ -771,7 +771,11 @@ void serializeState(JsonObject root, bool forPreset, bool includeBri, bool segme
 #ifdef ARDUINO_ARCH_ESP32
 int getCoreResetReason(int core) {
   if (core >= ESP.getChipCores()) return 0;
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  return((int)esp_rom_get_reset_reason(core));
+#else
   return((int)rtc_get_reset_reason(core));
+#endif
 }
 
 String resetCode2Info(int reason) {
@@ -1085,12 +1089,21 @@ void serializeInfo(JsonObject root)
 
   // begin WLEDMM
   #ifdef ARDUINO_ARCH_ESP32
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  root[F("e32core0code")] = (int)esp_rom_get_reset_reason(0);
+  root[F("e32core0text")] = resetCode2Info(esp_rom_get_reset_reason(0));
+  if(ESP.getChipCores() > 1) {
+    root[F("e32core1code")] = (int)esp_rom_get_reset_reason(1);
+    root[F("e32core1text")] = resetCode2Info(esp_rom_get_reset_reason(1));
+  }
+#else
   root[F("e32core0code")] = (int)rtc_get_reset_reason(0);
   root[F("e32core0text")] = resetCode2Info(rtc_get_reset_reason(0));
   if(ESP.getChipCores() > 1) {
     root[F("e32core1code")] = (int)rtc_get_reset_reason(1);
     root[F("e32core1text")] = resetCode2Info(rtc_get_reset_reason(1));
   }
+#endif
   root[F("e32code")] = (int)getRestartReason();
   root[F("e32text")] = restartCode2Info(getRestartReason());
 
