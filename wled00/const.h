@@ -28,7 +28,8 @@
     #define WLED_MAX_BUSSES 3
     #define WLED_MIN_VIRTUAL_BUSSES 2
   #else
-    #if defined(CONFIG_IDF_TARGET_ESP32C3)    // 2 RMT, 6 LEDC, only has 1 I2S but NPB does not support it ATM
+    #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6)  // C6 is very similar to C3
+                                              // 2 RMT, 6 LEDC, only has 1 I2S but NPB does not support it ATM
       #define WLED_MAX_BUSSES 3               // will allow 2 digital & 1 analog (or the other way around)
       #define WLED_MIN_VIRTUAL_BUSSES 3
     #elif defined(CONFIG_IDF_TARGET_ESP32S2)  // 4 RMT, 8 LEDC, only has 1 I2S bus, supported in NPB
@@ -393,7 +394,7 @@
   #ifdef ESP8266
     #define MAX_LED_MEMORY 4000
   #else
-    #if defined(ARDUINO_ARCH_ESP32S2) || defined(ARDUINO_ARCH_ESP32C3)
+    #if defined(ARDUINO_ARCH_ESP32S2) || defined(ARDUINO_ARCH_ESP32C3) || defined(ARDUINO_ARCH_ESP32C6)
       #define MAX_LED_MEMORY 32000
     #else
       #define MAX_LED_MEMORY 64000
@@ -534,6 +535,10 @@
   #define IRAM_ATTR_YN IRAM_ATTR
 #else
   #define IRAM_ATTR_YN
+#endif
+
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#define pcTaskGetTaskName pcTaskGetName
 #endif
 
 #endif
