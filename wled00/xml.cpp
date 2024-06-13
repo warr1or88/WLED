@@ -850,6 +850,8 @@ void getSettingsJS(AsyncWebServerRequest* request, byte subPage, char* dest) //W
     oappend(SET_F(".bin<br>("));
     #if defined(CONFIG_IDF_TARGET_ESP32C3)
     oappend(SET_F("ESP32-C3"));
+    #elif defined(CONFIG_IDF_TARGET_ESP32C6)
+    oappend(SET_F("ESP32-C6"));
     #elif defined(CONFIG_IDF_TARGET_ESP32S3)
     oappend(SET_F("ESP32-S3"));
     #elif defined(CONFIG_IDF_TARGET_ESP32S2)
