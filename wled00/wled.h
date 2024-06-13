@@ -16,10 +16,9 @@
 // a few hacks
 #if !defined(ARDUINO_ARCH_ESP32)
 #undef ESP_IDF_VERSION
-#endif
-#if !defined(ESP_IDF_VERSION) && !defined(ESP_IDF_VERSION_VAL)
-#undef ESP_IDF_VERSION
+#if !defined(ESP_IDF_VERSION_VAL)
 #define ESP_IDF_VERSION_VAL(a,b,c) 99999999 // dummy
+#endif
 #endif
 
 //WLEDMM + Moustachauve/Wled-Native 
