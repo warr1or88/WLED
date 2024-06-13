@@ -131,7 +131,9 @@ String PinManagerClass::getPinSpecialText(int gpio) {  // special purpose PIN in
       // ESP32-C3
       if (gpio > 17 && gpio < 20) return (F("USB (CDC) / JTAG"));
       //if (gpio == 2 || gpio == 8 || gpio == 9) return (F("(strapping pin)"));
-
+    #elif defined(CONFIG_IDF_TARGET_ESP32C6)
+      // ESP32-C6
+      if (gpio > 11 && gpio < 14) return (F("USB (CDC) / JTAG"));
     #else
       // "classic" ESP32, or ESP32 PICO-D4
       //if (gpio == 0 || gpio == 2 || gpio == 5) return (F("(strapping pin)"));
@@ -261,7 +263,7 @@ String PinManagerClass::getPinSpecialText(int gpio) {  // special purpose PIN in
   // ADC PINs - not for 8266
   if (digitalPinToAnalogChannel(gpio) >= 0) {  // ADC pin
   #ifdef SOC_ADC_CHANNEL_NUM
-    if (digitalPinToAnalogChannel(gpio) < SOC_ADC_CHANNEL_NUM(0)) return(F("ADC-1")); // for ESP32-S3, ESP32-S2, ESP32-C3 
+    if (digitalPinToAnalogChannel(gpio) < SOC_ADC_CHANNEL_NUM(0)) return(F("ADC-1")); // for ESP32-S3, ESP32-S2, ESP32-C3 , ESP32-C6
   #else
     if (digitalPinToAnalogChannel(gpio) < 8) return(F("ADC-1"));   // for classic ESP32
   #endif
@@ -654,7 +656,7 @@ bool PinManagerClass::joinWire(int8_t pinSDA, int8_t pinSCL) {
       if (gpio == A0) return true;   // for 8266
     #else                            // for ESP32 variants
       #ifdef SOC_ADC_CHANNEL_NUM
-        if (digitalPinToAnalogChannel(gpio) < SOC_ADC_CHANNEL_NUM(0)) return true; // ADC1 on ESP32-S3, ESP32-S2, ESP32-C3 
+        if (digitalPinToAnalogChannel(gpio) < SOC_ADC_CHANNEL_NUM(0)) return true; // ADC1 on ESP32-S3, ESP32-S2, ESP32-C3, ESP32-C6
       #else
         if (digitalPinToAnalogChannel(gpio) < 8) return true;   // ADC1 on classic ESP32
       #endif
@@ -685,7 +687,7 @@ bool PinManagerClass::joinWire(int8_t pinSDA, int8_t pinSCL) {
     #else                                                   // for ESP32 variants
       if ((adcUnit != ADC1) && (adcUnit != ADC2)) return(PM_NO_PIN); // catch errors
 
-      #if defined(SOC_ADC_MAX_CHANNEL_NUM)                                   // for ESP32-S3, ESP32-S2, ESP32-C3
+      #if defined(SOC_ADC_MAX_CHANNEL_NUM)                                   // for ESP32-S3, ESP32-S2, ESP32-C3, ESP32-C6
       int8_t analogChannel = (adcUnit == ADC1) ? adcPort : (SOC_ADC_MAX_CHANNEL_NUM + adcPort);
       if (adcPort >= SOC_ADC_MAX_CHANNEL_NUM) analogChannel = 255;
       #else                                                                  // for classic ESP32
@@ -731,6 +733,11 @@ bool PinManagerClass::isPinOk(byte gpio, bool output)
     // strapping pins: 2, 8, & 9
     if (gpio > 11 && gpio < 18) return false;     // 11-17 SPI FLASH
     if (gpio > 17 && gpio < 20) return false;     // 18-19 USB-JTAG
+  #elif defined(CONFIG_IDF_TARGET_ESP32C6)
+    // https://docs.espressif.com/projects/esp-idf/en/latest/esp32c6/api-reference/peripherals/gpio.html
+    // strapping pins: 4, 5, 8, 9
+    if (gpio > 11 && gpio < 14) return false;     // 12-13 USB-JTAG
+    if (gpio > 23 && gpio < 31) return false;     // 24-30 SPI FLASH
   #elif defined(CONFIG_IDF_TARGET_ESP32S3)
     // 00 to 18 are for general use. Be careful about straping pins GPIO0 and GPIO3 - these may be pulled-up or pulled-down on your board.
     if (gpio > 18 && gpio < 21) return false;     // 19 + 20 = USB-JTAG. Not recommended for other uses.
@@ -764,7 +771,7 @@ PinOwner PinManagerClass::getPinOwner(byte gpio) {
 }
 
 #ifdef ARDUINO_ARCH_ESP32
-#if defined(CONFIG_IDF_TARGET_ESP32C3)
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6)
   #define MAX_LED_CHANNELS 6
 #else
   #if defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
