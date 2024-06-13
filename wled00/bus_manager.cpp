@@ -231,7 +231,9 @@ BusPwm::BusPwm(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWhite) {
   uint8_t numPins = NUM_PWM_PINS(bc.type);
   _frequency = bc.frequency ? bc.frequency : WLED_PWM_FREQ;
 
-  #ifdef ESP8266
+#if !defined(CONFIG_IDF_TARGET_ESP32C6)
+
+  #if defined(ESP8266)
   analogWriteRange(255);  //same range as one RGB channel
   analogWriteFreq(_frequency);
   #else
@@ -254,6 +256,7 @@ BusPwm::BusPwm(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWhite) {
     ledcAttachPin(_pins[i], _ledcStart + i);
     #endif
   }
+#endif
   reversed = bc.reversed;
   _valid = true;
 }
@@ -368,7 +371,9 @@ void BusPwm::deallocatePins() {
     #ifdef ESP8266
     digitalWrite(_pins[i], LOW); //turn off PWM interrupt
     #else
+#if !defined(CONFIG_IDF_TARGET_ESP32C6)
     if (_ledcStart < 16) ledcDetachPin(_pins[i]);
+#endif
     #endif
   }
   #ifdef ARDUINO_ARCH_ESP32
