@@ -10,12 +10,17 @@
 // https://github.com/Makuna/NeoPixelBus/blob/b32f719e95ef3c35c46da5c99538017ef925c026/src/internal/Esp32_i2s.h#L4
 // https://github.com/Makuna/NeoPixelBus/blob/b32f719e95ef3c35c46da5c99538017ef925c026/src/internal/NeoEsp32RmtMethod.h#L857
 
-#if !defined(WLED_NO_I2S0_PIXELBUS) && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C3))
+#if !defined(WLED_NO_I2S0_PIXELBUS) && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6))
 #define WLED_NO_I2S0_PIXELBUS
 #endif
-#if !defined(WLED_NO_I2S1_PIXELBUS) && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S2))
+#if !defined(WLED_NO_I2S1_PIXELBUS) && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32S2))
 #define WLED_NO_I2S1_PIXELBUS
 #endif
+
+#if !defined(WLED_NO_RMT_PIXELBUS) && defined(CONFIG_IDF_TARGET_ESP32C6)  // NPB only supports BitBang on -C6 at the moment
+#define WLED_NO_RMT_PIXELBUS
+#endif
+
 // temporary end
 
 // WLEDMM TroyHacks support - SLOWPATH has priority over TWOPATH
@@ -186,25 +191,37 @@ bool canUseSerial(void);   // WLEDMM (wled_serial.cpp) returns true if Serial ca
 /*** ESP32 Neopixel methods ***/
 #ifdef ARDUINO_ARCH_ESP32
 //RGB
+#if defined(WLED_NO_RMT_PIXELBUS)
+#define B_32_RN_NEO_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32BitBangWs2812xMethod, NeoGammaNullMethod>
+#else
 #define B_32_RN_NEO_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32RmtNWs2812xMethod, NeoGammaNullMethod>
+#endif
 #ifndef WLED_NO_I2S0_PIXELBUS
 #define B_32_I0_NEO_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32I2s0800KbpsMethod, NeoGammaNullMethod>
 #endif
 #ifndef WLED_NO_I2S1_PIXELBUS
 #define B_32_I1_NEO_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32I2s1800KbpsMethod, NeoGammaNullMethod>
 #endif
-//#define B_32_BB_NEO_3 NeoPixelBrightnessBus<NeoGrbFeature, NeoEsp32BitBang800KbpsMethod> // NeoEsp8266BitBang800KbpsMethod
+//#define B_32_BB_NEO_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32BitBang800KbpsMethod, NeoGammaNullMethod> // NeoEsp8266BitBang800KbpsMethod
 //RGBW
+#if defined(WLED_NO_RMT_PIXELBUS)
+#define B_32_RN_NEO_4 NeoPixelBusLg<NeoGrbwFeature, NeoEsp32BitBangWs2812xMethod, NeoGammaNullMethod>
+#else
 #define B_32_RN_NEO_4 NeoPixelBusLg<NeoGrbwFeature, NeoEsp32RmtNWs2812xMethod, NeoGammaNullMethod>
+#endif
 #ifndef WLED_NO_I2S0_PIXELBUS
 #define B_32_I0_NEO_4 NeoPixelBusLg<NeoGrbwFeature, NeoEsp32I2s0800KbpsMethod, NeoGammaNullMethod>
 #endif
 #ifndef WLED_NO_I2S1_PIXELBUS
 #define B_32_I1_NEO_4 NeoPixelBusLg<NeoGrbwFeature, NeoEsp32I2s1800KbpsMethod, NeoGammaNullMethod>
 #endif
-//#define B_32_BB_NEO_4 NeoPixelBrightnessBus<NeoGrbwFeature, NeoEsp32BitBang800KbpsMethod> // NeoEsp8266BitBang800KbpsMethod
+//#define B_32_BB_NEO_4 NeoPixelBusLg<NeoGrbwFeature, NeoEsp32BitBang800KbpsMethod, NeoGammaNullMethod> // NeoEsp8266BitBang800KbpsMethod
 //400Kbps
+#if defined(WLED_NO_RMT_PIXELBUS)
+#define B_32_RN_400_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32BitBang400KbpsMethod, NeoGammaNullMethod>
+#else
 #define B_32_RN_400_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32RmtN400KbpsMethod, NeoGammaNullMethod>
+#endif
 #ifndef WLED_NO_I2S0_PIXELBUS
 #define B_32_I0_400_3 NeoPixelBusLg<NeoGrbFeature, NeoEsp32I2s0400KbpsMethod, NeoGammaNullMethod>
 #endif
@@ -213,7 +230,11 @@ bool canUseSerial(void);   // WLEDMM (wled_serial.cpp) returns true if Serial ca
 #endif
 //#define B_32_BB_400_3 NeoPixelBrightnessBus<NeoGrbFeature, NeoEsp32BitBang400KbpsMethod> // NeoEsp8266BitBang400KbpsMethod
 //TM1814 (RGBW)
+#if defined(WLED_NO_RMT_PIXELBUS)
+#define B_32_RN_TM1_4 NeoPixelBusLg<NeoWrgbTm1814Feature, NeoEsp32BitBangTm1814Method, NeoGammaNullMethod>
+#else
 #define B_32_RN_TM1_4 NeoPixelBusLg<NeoWrgbTm1814Feature, NeoEsp32RmtNTm1814Method, NeoGammaNullMethod>
+#endif
 #ifndef WLED_NO_I2S0_PIXELBUS
 #define B_32_I0_TM1_4 NeoPixelBusLg<NeoWrgbTm1814Feature, NeoEsp32I2s0Tm1814Method, NeoGammaNullMethod>
 #endif
@@ -222,7 +243,11 @@ bool canUseSerial(void);   // WLEDMM (wled_serial.cpp) returns true if Serial ca
 #endif
 //Bit Bang theoratically possible, but very undesirable and not needed (no pin restrictions on RMT and I2S)
 //TM1829 (RGB)
+#if defined(WLED_NO_RMT_PIXELBUS)
+#define B_32_RN_TM2_3 NeoPixelBusLg<NeoBrgFeature, NeoEsp32BitBangTm1829Method, NeoGammaNullMethod>
+#else
 #define B_32_RN_TM2_3 NeoPixelBusLg<NeoBrgFeature, NeoEsp32RmtNTm1829Method, NeoGammaNullMethod>
+#endif
 #ifndef WLED_NO_I2S0_PIXELBUS
 #define B_32_I0_TM2_3 NeoPixelBusLg<NeoBrgFeature, NeoEsp32I2s0Tm1829Method, NeoGammaNullMethod>
 #endif
@@ -231,7 +256,11 @@ bool canUseSerial(void);   // WLEDMM (wled_serial.cpp) returns true if Serial ca
 #endif
 //Bit Bang theoratically possible, but very undesirable and not needed (no pin restrictions on RMT and I2S)
 //UCS8903
+#if defined(WLED_NO_RMT_PIXELBUS)
+#define B_32_RN_UCS_3 NeoPixelBusLg<NeoRgbUcs8903Feature, NeoEsp32BitBangWs2812xMethod, NeoGammaNullMethod>
+#else
 #define B_32_RN_UCS_3 NeoPixelBusLg<NeoRgbUcs8903Feature, NeoEsp32RmtNWs2812xMethod, NeoGammaNullMethod>
+#endif
 #ifndef WLED_NO_I2S0_PIXELBUS
 #define B_32_I0_UCS_3 NeoPixelBusLg<NeoRgbUcs8903Feature, NeoEsp32I2s0800KbpsMethod, NeoGammaNullMethod>
 #endif
@@ -240,7 +269,11 @@ bool canUseSerial(void);   // WLEDMM (wled_serial.cpp) returns true if Serial ca
 #endif
 //Bit Bang theoratically possible, but very undesirable and not needed (no pin restrictions on RMT and I2S)
 //UCS8904
+#if defined(WLED_NO_RMT_PIXELBUS)
+#define B_32_RN_UCS_4 NeoPixelBusLg<NeoRgbwUcs8904Feature, NeoEsp32BitBangWs2812xMethod, NeoGammaNullMethod>
+#else
 #define B_32_RN_UCS_4 NeoPixelBusLg<NeoRgbwUcs8904Feature, NeoEsp32RmtNWs2812xMethod, NeoGammaNullMethod>
+#endif
 #ifndef WLED_NO_I2S0_PIXELBUS
 #define B_32_I0_UCS_4 NeoPixelBusLg<NeoRgbwUcs8904Feature, NeoEsp32I2s0800KbpsMethod, NeoGammaNullMethod>
 #endif
@@ -456,7 +489,11 @@ class PolyBus {
       case I_8266_BB_UCS_4: busPtr = new B_8266_BB_UCS_4(len, pins[0]); break;
     #endif
     #ifdef ARDUINO_ARCH_ESP32
+#if defined(WLED_NO_RMT_PIXELBUS)
+      case I_32_RN_NEO_3: busPtr = new B_32_RN_NEO_3(len, pins[0]); USER_PRINT("(BitBang) "); break;
+#else
       case I_32_RN_NEO_3: busPtr = new B_32_RN_NEO_3(len, pins[0], (NeoBusChannel)channel); USER_PRINTF("(RMT #%u) ", channel); break;
+#endif
       #ifndef WLED_NO_I2S0_PIXELBUS
       case I_32_I0_NEO_3: busPtr = new B_32_I0_NEO_3(len, pins[0]); USER_PRINT("(I2S #0) "); break;
       #endif
@@ -464,7 +501,11 @@ class PolyBus {
       case I_32_I1_NEO_3: busPtr = new B_32_I1_NEO_3(len, pins[0]); USER_PRINT("(I2S #1) "); break;
       #endif
 //      case I_32_BB_NEO_3: busPtr = new B_32_BB_NEO_3(len, pins[0], (NeoBusChannel)channel); break;
+#if defined(WLED_NO_RMT_PIXELBUS)
+      case I_32_RN_NEO_4: busPtr = new B_32_RN_NEO_4(len, pins[0]); USER_PRINT("(RGBW BitBang) "); break;
+#else
       case I_32_RN_NEO_4: busPtr = new B_32_RN_NEO_4(len, pins[0], (NeoBusChannel)channel); USER_PRINTF("(RGBW RMT #%u) ", channel); break;
+#endif
       #ifndef WLED_NO_I2S0_PIXELBUS
       case I_32_I0_NEO_4: busPtr = new B_32_I0_NEO_4(len, pins[0]); USER_PRINT("(RGBW I2S #0) "); break;
       #endif
@@ -472,7 +513,11 @@ class PolyBus {
       case I_32_I1_NEO_4: busPtr = new B_32_I1_NEO_4(len, pins[0]); USER_PRINT("(RGBW I2S #1) "); break;
       #endif
 //      case I_32_BB_NEO_4: busPtr = new B_32_BB_NEO_4(len, pins[0], (NeoBusChannel)channel); break;
+#if defined(WLED_NO_RMT_PIXELBUS)
+      case I_32_RN_400_3: busPtr = new B_32_RN_400_3(len, pins[0]); break;
+#else
       case I_32_RN_400_3: busPtr = new B_32_RN_400_3(len, pins[0], (NeoBusChannel)channel); break;
+#endif
       #ifndef WLED_NO_I2S0_PIXELBUS
       case I_32_I0_400_3: busPtr = new B_32_I0_400_3(len, pins[0]); break;
       #endif
@@ -480,8 +525,13 @@ class PolyBus {
       case I_32_I1_400_3: busPtr = new B_32_I1_400_3(len, pins[0]); break;
       #endif
 //      case I_32_BB_400_3: busPtr = new B_32_BB_400_3(len, pins[0], (NeoBusChannel)channel); break;
+#if defined(WLED_NO_RMT_PIXELBUS)
+      case I_32_RN_TM1_4: busPtr = new B_32_RN_TM1_4(len, pins[0]); break;
+      case I_32_RN_TM2_3: busPtr = new B_32_RN_TM2_3(len, pins[0]); break;
+#else
       case I_32_RN_TM1_4: busPtr = new B_32_RN_TM1_4(len, pins[0], (NeoBusChannel)channel); break;
       case I_32_RN_TM2_3: busPtr = new B_32_RN_TM2_3(len, pins[0], (NeoBusChannel)channel); break;
+#endif
       #ifndef WLED_NO_I2S0_PIXELBUS
       case I_32_I0_TM1_4: busPtr = new B_32_I0_TM1_4(len, pins[0]); break;
       case I_32_I0_TM2_3: busPtr = new B_32_I0_TM2_3(len, pins[0]); break;
@@ -490,7 +540,11 @@ class PolyBus {
       case I_32_I1_TM1_4: busPtr = new B_32_I1_TM1_4(len, pins[0]); break;
       case I_32_I1_TM2_3: busPtr = new B_32_I1_TM2_3(len, pins[0]); break;
       #endif
+#if defined(WLED_NO_RMT_PIXELBUS)
+      case I_32_RN_UCS_3: busPtr = new B_32_RN_UCS_3(len, pins[0]); break;
+#else
       case I_32_RN_UCS_3: busPtr = new B_32_RN_UCS_3(len, pins[0], (NeoBusChannel)channel); break;
+#endif
       #ifndef WLED_NO_I2S0_PIXELBUS
       case I_32_I0_UCS_3: busPtr = new B_32_I0_UCS_3(len, pins[0]); break;
       #endif
@@ -498,7 +552,11 @@ class PolyBus {
       case I_32_I1_UCS_3: busPtr = new B_32_I1_UCS_3(len, pins[0]); break;
       #endif
 //      case I_32_BB_UCS_3: busPtr = new B_32_BB_UCS_3(len, pins[0], (NeoBusChannel)channel); break;
+#if defined(WLED_NO_RMT_PIXELBUS)
+      case I_32_RN_UCS_4: busPtr = new B_32_RN_UCS_4(len, pins[0]); break;
+#else
       case I_32_RN_UCS_4: busPtr = new B_32_RN_UCS_4(len, pins[0], (NeoBusChannel)channel); break;
+#endif
       #ifndef WLED_NO_I2S0_PIXELBUS
       case I_32_I0_UCS_4: busPtr = new B_32_I0_UCS_4(len, pins[0]); break;
       #endif
@@ -1203,6 +1261,11 @@ class PolyBus {
       if (num > 3) offset = 1;  // only one I2S
       #elif defined(CONFIG_IDF_TARGET_ESP32C3)
       // On ESP32-C3 only the first 2 RMT channels are usable for transmitting
+      if (num > 1) return I_NONE;
+      //if (num > 1) offset = 1; // I2S not supported yet (only 1 I2S)
+      #elif defined(CONFIG_IDF_TARGET_ESP32C6)
+      // toDo: double-check everything is the same -C3
+      // On ESP32-C6 only the first 2 RMT channels are usable for transmitting
       if (num > 1) return I_NONE;
       //if (num > 1) offset = 1; // I2S not supported yet (only 1 I2S)
       #elif defined(CONFIG_IDF_TARGET_ESP32S3)
