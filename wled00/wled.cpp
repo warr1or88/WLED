@@ -10,7 +10,7 @@
 #include "soc/rtc_cntl_reg.h"
 #endif
 
-#if defined(WLED_DEBUG) && defined(ARDUINO_ARCH_ESP32)
+#if defined(WLED_DEBUG) && defined(ARDUINO_ARCH_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32C6)
 #include "../tools/ESP32-Chip_info.hpp"
 #endif
 
@@ -542,7 +542,7 @@ void WLED::setup()
   #endif
   USER_PRINT(F(", speed ")); USER_PRINT(ESP.getFlashChipSpeed()/1000000);USER_PRINTLN(F("MHz."));
   
-  #if defined(WLED_DEBUG) && defined(ARDUINO_ARCH_ESP32)
+  #if defined(WLED_DEBUG) && defined(ARDUINO_ARCH_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32C6)
   showRealSpeed();
   #endif
 
