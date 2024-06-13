@@ -21,8 +21,10 @@
 #include "../network/Network.h"
 #include <string.h>
 
+#ifdef ARDUINO_ARCH_ESP32
 #if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #define Network WL_Network
+#endif
 #endif
 
 // E1.17 ACN Packet Identifier

@@ -13,6 +13,15 @@
 // WLEDMM  - you can check for this define in usermods, to only enabled WLEDMM specific code in the "right" fork. Its not defined in AC WLED.
 #define _MoonModules_WLED_
 
+// a few hacks
+#if !defined(ARDUINO_ARCH_ESP32)
+#undef ESP_IDF_VERSION
+#endif
+#if !defined(ESP_IDF_VERSION) && !defined(ESP_IDF_VERSION_VAL)
+#undef ESP_IDF_VERSION
+#define ESP_IDF_VERSION_VAL(a,b,c) 99999999 // dummy
+#endif
+
 //WLEDMM + Moustachauve/Wled-Native 
 // You can define custom product info from build flags.
 // This is useful to allow API consumer to identify what type of WLED version

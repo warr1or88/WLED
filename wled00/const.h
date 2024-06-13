@@ -537,8 +537,10 @@
   #define IRAM_ATTR_YN
 #endif
 
+#ifdef ARDUINO_ARCH_ESP32
 #if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #define pcTaskGetTaskName pcTaskGetName
+#endif
 #endif
 
 #endif
