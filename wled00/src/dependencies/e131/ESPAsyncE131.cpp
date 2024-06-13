@@ -21,6 +21,10 @@
 #include "../network/Network.h"
 #include <string.h>
 
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#define Network WL_Network
+#endif
+
 // E1.17 ACN Packet Identifier
 const byte ESPAsyncE131::ACN_ID[12] = { 0x41, 0x53, 0x43, 0x2d, 0x45, 0x31, 0x2e, 0x31, 0x37, 0x00, 0x00, 0x00 };
 

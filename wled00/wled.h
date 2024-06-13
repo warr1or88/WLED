@@ -128,6 +128,9 @@
 #include <SPI.h>
 
 #include "src/dependencies/network/Network.h"
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#define Network WL_Network
+#endif
 
 #ifdef WLED_USE_MY_CONFIG
   #include "my_config.h"
@@ -327,7 +330,7 @@ WLED_GLOBAL int8_t irPin _INIT(-1);
 WLED_GLOBAL int8_t irPin _INIT(IRPIN);
 #endif
 
-#if defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S2) || (defined(RX) && defined(TX))
+#if defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C3) ||  defined(CONFIG_IDF_TARGET_ESP32C6) ||defined(CONFIG_IDF_TARGET_ESP32S2) || (defined(RX) && defined(TX))
   // use RX/TX as set by the framework - these boards do _not_ have RX=3 and TX=1
   constexpr uint8_t hardwareRX = RX;
   constexpr uint8_t hardwareTX = TX;

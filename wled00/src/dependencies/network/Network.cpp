@@ -1,5 +1,9 @@
 #include "Network.h"
 
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+//#define NetworkClass NetworkManager
+#endif
+
 IPAddress NetworkClass::localIP()
 {
   IPAddress localIP;
@@ -88,4 +92,4 @@ bool NetworkClass::isEthernet()
   return false;
 }
 
-NetworkClass Network;
+NetworkClass WL_Network;

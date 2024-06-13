@@ -19,6 +19,10 @@ public:
   bool isEthernet();
 };
 
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+extern NetworkClass WL_Network;
+#else
 extern NetworkClass Network;
+#endif
 
 #endif
