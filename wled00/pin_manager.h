@@ -3,6 +3,15 @@
 /*
  * Registers pins so there is no attempt for two interfaces to use the same pin
  */
+
+#ifdef ARDUINO_ARCH_ESP32
+// get prototypes for GPIO_IS_VALID_GPIO and GPIO_IS_VALID_OUTPUT_GPIO
+extern "C" {
+#include "esp32-hal.h"
+#include "driver/gpio.h"
+}
+#endif
+
 #include <Arduino.h>
 #include "const.h" // for USERMOD_* values
 
