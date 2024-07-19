@@ -127,7 +127,9 @@ BusDigital::BusDigital(BusConfig &bc, uint8_t nr, const ColorOrderMap &com) : Bu
   _valid = (_busPtr != nullptr);
   _colorOrder = bc.colorOrder;
   if (_pins[1] != 255) {  // WLEDMM USER_PRINTF
-    USER_PRINTF("%successfully inited strip %u (len %u) with type %u and pins %u,%u (itype %u)\n", _valid?"S":"Uns", nr, _len, bc.type, _pins[0],_pins[1],_iType);
+    USER_PRINTF("%successfully inited strip %u (len %u) with type %u and pins %u,%u (itype %u)", _valid?"S":"Uns", nr, _len, bc.type, _pins[0],_pins[1],_iType);
+    if (bc.frequency > 999) USER_PRINTF(", %d MHz", bc.frequency/1000);
+    USER_PRINTLN();
   } else {
     USER_PRINTF("%successfully inited strip %u (len %u) with type %u and pin %u (itype %u)\n", _valid?"S":"Uns", nr, _len, bc.type, _pins[0],_iType);
   }
@@ -231,9 +233,7 @@ BusPwm::BusPwm(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWhite) {
   uint8_t numPins = NUM_PWM_PINS(bc.type);
   _frequency = bc.frequency ? bc.frequency : WLED_PWM_FREQ;
 
-#if !defined(CONFIG_IDF_TARGET_ESP32C6)
-
-  #if defined(ESP8266)
+  #ifdef ESP8266
   analogWriteRange(255);  //same range as one RGB channel
   analogWriteFreq(_frequency);
   #else
@@ -243,6 +243,7 @@ BusPwm::BusPwm(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWhite) {
   }
   #endif
 
+  USER_PRINT("[PWM");
   for (uint8_t i = 0; i < numPins; i++) {
     uint8_t currentPin = bc.pins[i];
     if (!pinManager.allocatePin(currentPin, true, PinOwner::BusPwm)) {
@@ -255,8 +256,9 @@ BusPwm::BusPwm(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWhite) {
     ledcSetup(_ledcStart + i, _frequency, 8);
     ledcAttachPin(_pins[i], _ledcStart + i);
     #endif
+    USER_PRINT(" "); USER_PRINT(currentPin);
   }
-#endif
+  USER_PRINTLN("] ");
   reversed = bc.reversed;
   _valid = true;
 }
@@ -371,9 +373,7 @@ void BusPwm::deallocatePins() {
     #ifdef ESP8266
     digitalWrite(_pins[i], LOW); //turn off PWM interrupt
     #else
-#if !defined(CONFIG_IDF_TARGET_ESP32C6)
     if (_ledcStart < 16) ledcDetachPin(_pins[i]);
-#endif
     #endif
   }
   #ifdef ARDUINO_ARCH_ESP32
@@ -394,6 +394,7 @@ BusOnOff::BusOnOff(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWhite) {
   pinMode(_pin, OUTPUT);
   reversed = bc.reversed;
   _valid = true;
+  USER_PRINTF("[On-Off %d] \n", int(currentPin));
 }
 
 void BusOnOff::setPixelColor(uint16_t pix, uint32_t c) {
@@ -426,18 +427,22 @@ uint8_t BusOnOff::getPins(uint8_t* pinArray) {
 
 BusNetwork::BusNetwork(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWhite) {
   _valid = false;
+  USER_PRINT("[");
   switch (bc.type) {
     case TYPE_NET_ARTNET_RGB:
       _rgbw = false;
       _UDPtype = 2;
+      USER_PRINT("NET_ARTNET_RGB");
       break;
     case TYPE_NET_E131_RGB:
       _rgbw = false;
       _UDPtype = 1;
+      USER_PRINT("NET_E131_RGB");
       break;
     default: // TYPE_NET_DDP_RGB / TYPE_NET_DDP_RGBW
       _rgbw = bc.type == TYPE_NET_DDP_RGBW;
       _UDPtype = 0;
+      USER_PRINT(bc.type == TYPE_NET_DDP_RGBW ? "NET_DDP_RGBW" : "NET_DDP_RGB");
       break;
   }
   _UDPchannels = _rgbw ? 4 : 3;
@@ -448,6 +453,7 @@ BusNetwork::BusNetwork(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWhite) {
   _client = IPAddress(bc.pins[0],bc.pins[1],bc.pins[2],bc.pins[3]);
   _broadcastLock = false;
   _valid = true;
+  USER_PRINTF(" %u.%u.%u.%u] \n", bc.pins[0],bc.pins[1],bc.pins[2],bc.pins[3]);
 }
 
 void BusNetwork::setPixelColor(uint16_t pix, uint32_t c) {
@@ -495,7 +501,7 @@ void BusNetwork::cleanup() {
 
 BusHub75Matrix::BusHub75Matrix(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWhite) {
 
-  mxconfig.double_buff = false; // <------------- Turn on double buffer
+  mxconfig.double_buff = false; // default to off, known to cause issue with some effects but needs more memory
 
 
   fourScanPanel = nullptr;
@@ -519,13 +525,15 @@ BusHub75Matrix::BusHub75Matrix(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWh
       break;
     case 106:
       mxconfig.mx_width = 64 * 2;
+      mxconfig.mx_height = 32 / 2;
+      break;
+    case 107:
+      mxconfig.mx_width = 64 * 2;
       mxconfig.mx_height = 64 / 2;
       break;
   }
 
-  mxconfig.chain_length = max((u_int8_t) 1, min(bc.pins[0], (u_int8_t) 4)); // prevent bad data preventing boot due to low memory
-
-  if(mxconfig.mx_width >= 64 && (bc.pins[0] > 1)) {
+  if(mxconfig.mx_height >= 64 && (bc.pins[0] > 1)) {
     USER_PRINT("WARNING, only single panel can be used of 64 pixel boards due to memory")
     mxconfig.chain_length = 1;
   }
@@ -537,6 +545,8 @@ BusHub75Matrix::BusHub75Matrix(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWh
   // https://www.adafruit.com/product/5778
 
   USER_PRINTLN("MatrixPanel_I2S_DMA - Matrix Portal S3 config");
+
+  mxconfig.double_buff = true; // <------------- Turn on double buffer
 
   mxconfig.gpio.r1 = 42;
   mxconfig.gpio.g1 = 41;
@@ -614,6 +624,7 @@ BusHub75Matrix::BusHub75Matrix(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWh
 
 #endif
 
+  mxconfig.chain_length = max((u_int8_t) 1, min(bc.pins[0], (u_int8_t) 4)); // prevent bad data preventing boot due to low memory
 
   USER_PRINTF("MatrixPanel_I2S_DMA config - %ux%u length: %u\n", mxconfig.mx_width, mxconfig.mx_height, mxconfig.chain_length);
 
@@ -656,12 +667,18 @@ BusHub75Matrix::BusHub75Matrix(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWh
   
   switch(bc.type) {
     case 105:
-      USER_PRINTLN("MatrixPanel_I2S_DMA FOUR_SCAN_32PX_HIGH");
+      USER_PRINTLN("MatrixPanel_I2S_DMA FOUR_SCAN_32PX_HIGH - 32x32");
       fourScanPanel = new VirtualMatrixPanel((*display), 1, 1, 32, 32);
       fourScanPanel->setPhysicalPanelScanRate(FOUR_SCAN_32PX_HIGH);
       fourScanPanel->setRotation(0);
       break;
     case 106:
+      USER_PRINTLN("MatrixPanel_I2S_DMA FOUR_SCAN_32PX_HIGH - 64x32");
+      fourScanPanel = new VirtualMatrixPanel((*display), 1, 1, 64, 32);
+      fourScanPanel->setPhysicalPanelScanRate(FOUR_SCAN_32PX_HIGH);
+      fourScanPanel->setRotation(0);
+      break;
+    case 107:
       USER_PRINTLN("MatrixPanel_I2S_DMA FOUR_SCAN_64PX_HIGH");
       fourScanPanel = new VirtualMatrixPanel((*display), 1, 1, 64, 64);
       fourScanPanel->setPhysicalPanelScanRate(FOUR_SCAN_64PX_HIGH);
@@ -743,10 +760,14 @@ int BusManager::add(BusConfig &bc) {
   DEBUG_PRINTF("BusManager::add(bc.type=%u)\n", bc.type);
   if (bc.type >= TYPE_NET_DDP_RGB && bc.type < 96) {
     busses[numBusses] = new BusNetwork(bc);
-#ifdef WLED_ENABLE_HUB75MATRIX
   } else if (bc.type >= TYPE_HUB75MATRIX && bc.type <= (TYPE_HUB75MATRIX + 10)) {
+#ifdef WLED_ENABLE_HUB75MATRIX
     DEBUG_PRINTLN("BusManager::add - Adding BusHub75Matrix");
     busses[numBusses] = new BusHub75Matrix(bc);
+    USER_PRINTLN("[BusHub75Matrix] ");
+#else
+    USER_PRINTLN("[unsupported! BusHub75Matrix] ");
+    return -1;
 #endif
   } else if (IS_DIGITAL(bc.type)) {
     busses[numBusses] = new BusDigital(bc, numBusses, colorOrderMap);
