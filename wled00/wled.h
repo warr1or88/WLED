@@ -822,6 +822,10 @@ WLED_GLOBAL StaticJsonDocument<JSON_BUFFER_SIZE> doc;
 #endif // WLEDMM end
 WLED_GLOBAL volatile uint8_t jsonBufferLock _INIT(0);
 
+#if defined(ARDUINO_ARCH_ESP32)
+WLED_GLOBAL SemaphoreHandle_t jsonBufferLockMutex _INIT(xSemaphoreCreateRecursiveMutex());
+#endif
+
 // enable additional debug output
 //WLEDMM: switch between netdebug and serial
 // cannot do this on -S2, due to buggy USBCDC serial driver: canUseSerial
