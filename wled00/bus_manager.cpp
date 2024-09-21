@@ -162,7 +162,7 @@ void BusDigital::show() {
   PolyBus::show(_busPtr, _iType);
 }
 
-bool BusDigital::canShow() const {
+bool BusDigital::canShow() {
   return PolyBus::canShow(_busPtr, _iType);
 }
 
@@ -616,10 +616,10 @@ BusHub75Matrix::BusHub75Matrix(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWh
   mxconfig.gpio.a =   45;
   mxconfig.gpio.b =   48;
   mxconfig.gpio.c =   47;
-  mxconfig.gpio.d =   21;   // this says GND but should be the "D" pin
+  mxconfig.gpio.d =   21;
   mxconfig.gpio.clk = 18;
   mxconfig.gpio.lat = 8;
-  mxconfig.gpio.oe  = 0;
+  mxconfig.gpio.oe  = 3;
   // 16th pin is GND
 
 #elif defined(CONFIG_IDF_TARGET_ESP32S3) // ESP32-S3
@@ -885,7 +885,7 @@ uint32_t BusHub75Matrix::getPixelColor(uint16_t pix) const {
 
 void BusHub75Matrix::setBrightness(uint8_t b, bool immediate) {
   _bri = b;
-  if (_bri > 238) _bri=238;
+  // if (_bri > 238) _bri=238; // not strictly needed. Enable this line if you see glitches at highest brightness.
   display->setBrightness(_bri);
 }
 
