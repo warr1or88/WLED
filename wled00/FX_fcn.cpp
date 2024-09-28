@@ -1304,7 +1304,7 @@ uint32_t __attribute__((hot)) Segment::getPixelColor(int i) const
   if (offset < INT16_MAX) i += offset; // WLEDMM
   if ((i >= stop) && (stop>0)) i -= length(); // WLEDMM avoid negative index (stop = 0 is a possible value)
   if (i<0) i=0; // WLEDMM just to be 100% sure
-  return strip.getPixelColor(i);
+  return strip.getPixelColorRestored(i);
 }
 
 uint8_t Segment::differs(Segment& b) const {
@@ -1510,7 +1510,9 @@ void __attribute__((hot)) Segment::fadeToBlackBy(uint8_t fadeBy) {
     for (unsigned y = 0; y < rows; y++) for (unsigned x = 0; x < cols; x++) {
       uint32_t cc = getPixelColorXY(int(x),int(y));                            // WLEDMM avoid RGBW32 -> CRGB -> RGBW32 conversion
       uint32_t cc2 = color_fade(cc, scaledown);                      // fade
-      //if (cc2 != cc)                                               // WLEDMM only re-paint if faded color is different - disabled - causes problem with text overlay
+#ifdef WLEDMM_FASTPATH
+      if (cc2 != cc)                                               // WLEDMM only re-paint if faded color is different - normally disabled - causes problem with text overlay
+#endif
         setPixelColorXY(int(x), int(y), cc2);
     }
   } else {
@@ -1941,6 +1943,12 @@ uint32_t WS2812FX::getPixelColor(uint_fast16_t i) const // WLEDMM fast int types
   return busses.getPixelColor(i);
 }
 
+uint32_t WS2812FX::getPixelColorRestored(uint_fast16_t i)  const  // WLEDMM gets the original color from the driver (without downscaling by _bri)
+{
+  if (i < customMappingSize) i = customMappingTable[i];
+  if (i >= _length) return 0;
+  return busses.getPixelColorRestored(i);
+}
 
 //DISCLAIMER
 //The following function attemps to calculate the current LED power usage,
@@ -1985,7 +1993,8 @@ void WS2812FX::estimateCurrentAndLimitBri() {
 
   for (uint_fast8_t bNum = 0; bNum < busses.getNumBusses(); bNum++) {
     Bus *bus = busses.getBus(bNum);
-    if (bus->getType() >= TYPE_NET_DDP_RGB) continue; //exclude non-physical network busses
+    auto btype = bus->getType();
+    if (EXCLUDE_FROM_ABL(btype)) continue; // WLEDMM exclude non-ABL and network busses
     uint16_t len = bus->getLength();
     uint32_t busPowerSum = 0;
     for (uint_fast16_t i = 0; i < len; i++) { //sum up the usage of each LED
@@ -2196,7 +2205,20 @@ uint16_t WS2812FX::getLengthPhysical(void) const {  // WLEDMM fast int types
   uint_fast16_t len = 0;
   for (unsigned b = 0; b < busses.getNumBusses(); b++) {   //  WLEDMM use native (fast) types
     Bus *bus = busses.getBus(b);
-    if (bus->getType() >= TYPE_NET_DDP_RGB) continue; //exclude non-physical network busses
+    auto btype = bus->getType();
+    if (EXCLUDE_FROM_ABL(btype)) continue;  //exclude HUB75, and non-physical network busses
+    len += bus->getLength();
+  }
+  return len;
+}
+
+//WLEDMM - getLengthPhysical plus plysical busses not supporting ABL (i.e. HUB75)
+uint16_t WS2812FX::getLengthPhysical2(void) const {
+  uint_fast16_t len = 0;
+  for (unsigned b = 0; b < busses.getNumBusses(); b++) {
+    Bus *bus = busses.getBus(b);
+    auto btype = bus->getType();
+    if (IS_VIRTUAL(btype)) continue;
     len += bus->getLength();
   }
   return len;
