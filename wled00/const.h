@@ -252,7 +252,8 @@
 //Network types (master broadcast) (80-95)
 #define TYPE_NET_DDP_RGB         80            //network DDP RGB bus (master broadcast bus)
 #define TYPE_NET_E131_RGB        81            //network E131 RGB bus (master broadcast bus, unused)
-#define TYPE_NET_ARTNET_RGB      82            //network ArtNet RGB bus (master broadcast bus, unused)
+#define TYPE_NET_ARTNET_RGB      82            //network ArtNet RGB bus (master broadcast bus)
+#define TYPE_NET_ARTNET_RGBW     83            //network ArtNet RGB bus (master broadcast bus)
 #define TYPE_NET_DDP_RGBW        88            //network DDP RGBW bus (master broadcast bus)
 
 #define IS_DIGITAL(t) (((t) & 0x10) || ((t)==TYPE_HUB75MATRIX)) //digital are 16-31 and 48-63 // WLEDMM added HUB75
@@ -357,6 +358,10 @@
 #define ERR_LOW_WS_MEM  35  // WLEDMM: low memory (ws)
 #define ERR_LOW_AJAX_MEM  36 // WLEDMM: low memory (oappend)
 #define ERR_LOW_BUF     37  // WLEDMM: low memory (LED buffer from allocLEDs)
+#define ERR_SYS_REBOOT  90  // WLEDMM: reboot after error
+#define ERR_SYS_BROWNOUT  91 // WLEDMM: reboot after brownout alert
+#define ERR_REBOOT_NEEDED 98 // WLEDMM: reboot needed after changing hardware setting
+#define ERR_POWEROFF_NEEDED 99 // WLEDMM: power-cycle needed after changing hardware setting
 
 // Timer mode types
 #define NL_MODE_SET               0            //After nightlight time elapsed, set to target brightness
@@ -391,7 +396,11 @@
 #define MAX_LEDS 1664 //can't rely on memory limit to limit this to 1600 LEDs
 #else
 //#define MAX_LEDS 8192
-#define MAX_LEDS 8464 // WLEDMM 92x92
+#if !defined(CONFIG_IDF_TARGET_ESP32S3)
+  #define MAX_LEDS 8464 // WLEDMM 92x92 for esp32, esp32-S2 and esp32-c3
+#else
+  #define MAX_LEDS 18436 // WLEDMM 128x128 + 2048 + 4 for esp32-S3
+#endif
 #endif
 #endif
 
@@ -437,7 +446,11 @@
     #ifdef ESP8266
       #define E131_MAX_UNIVERSE_COUNT 9
     #else
-      #define E131_MAX_UNIVERSE_COUNT 12
+      #if !defined(CONFIG_IDF_TARGET_ESP32S2) && !defined(CONFIG_IDF_TARGET_ESP32C3)  && !defined(CONFIG_IDF_TARGET_ESP32C6)
+        #define E131_MAX_UNIVERSE_COUNT 112 // WLEDMM enough universes for 128 x 128 pixels, for boards that can handle it
+      #else
+        #define E131_MAX_UNIVERSE_COUNT 12  // WLEDMM use upstream default for S2 and C3
+      #endif
     #endif
   #endif
 #endif

@@ -5,7 +5,7 @@
 #ifdef ARDUINO_ARCH_ESP32
 #include "esp_ota_ops.h"
 #endif
-#warning WLED-MM GPL-v3. By installing WLED MM you implicitly accept the terms!
+#warning WLED-MM is licensed under the EUPL-1.2. By installing WLED MM you implicitly accept the terms!
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(WLED_DISABLE_BROWNOUT_DET)
 #include "soc/soc.h"
@@ -308,6 +308,7 @@ void WLED::loop()
       delete busConfigs[i]; busConfigs[i] = nullptr;
     }
     strip.finalizeInit();
+    busses.setBrightness(bri); // fix re-initialised bus' brightness #4005
     loadLedmap = true;
     if (aligned) strip.makeAutoSegments();
     else strip.fixInvalidSegments();
@@ -348,7 +349,7 @@ void WLED::loop()
       //DEBUG_PRINT(F("Total PSRAM: "));    DEBUG_PRINT(ESP.getPsramSize()/1024); DEBUG_PRINTLN("kB");
       DEBUG_PRINT(F("Free PSRAM : "));     DEBUG_PRINT(ESP.getFreePsram()/1024); DEBUG_PRINTLN("kB");
       DEBUG_PRINT(F("Avail PSRAM: "));     DEBUG_PRINT(ESP.getMaxAllocPsram()/1024); DEBUG_PRINTLN("kB");
-	  DEBUG_PRINT(F("PSRAM in use:")); DEBUG_PRINT(ESP.getPsramSize() - ESP.getFreePsram()); DEBUG_PRINTLN(F(" Bytes"));
+      DEBUG_PRINT(F("PSRAM in use:")); DEBUG_PRINT(int(ESP.getPsramSize() - ESP.getFreePsram())); DEBUG_PRINTLN(F(" Bytes"));
 
     } else {
       //DEBUG_PRINTLN(F("No PSRAM"));
@@ -403,22 +404,6 @@ void WLED::loop()
   #endif
 #endif
 
-#if 0 && defined(ALL_JSON_TO_PSRAM) && defined(WLED_USE_PSRAM_JSON)
-// WLEDMM experiment - JSON garbagecollect once per minute. Warning: may crash at random
-  static unsigned long last_gc_time = 0;
-  // try once in 60 seconds
-  if ((millis() - last_gc_time) > 60000) {
-    // look for a perfect moment -> make sure no strip or segments or presets activity, no configs being updated, no realtime external control
-    if (!suspendStripService && !doInitBusses && !doReboot && !doCloseFile && !realtimeMode && !loadLedmap && !presetsActionPending()) {
-      // make sure JSON buffer is not in use
-      if ( (doSerializeConfig == false) && (jsonBufferLock == 0) && (fileDoc == nullptr)) {
-        USER_PRINTLN(F("JSON gabage collection (regular)."));
-        doc.garbageCollect();                   // WLEDMM experimental - trigger garbage collection on JSON doc memory pool.
-                                                // this will make any pending reference to JSON objects _invalid_
-        last_gc_time = millis();
-  } } }
-#endif
-
 }
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(WLEDMM_FASTPATH)
@@ -467,17 +452,23 @@ void WLED::setup()
   delay(WLED_BOOTUPDELAY); // delay to let voltage stabilize, helps with boot issues on some setups
   #endif
   Serial.begin(115200);
+
+#if !defined(WLEDMM_NO_SERIAL_WAIT) || defined(WLED_DEBUG)
   if (!Serial) delay(1000); // WLEDMM make sure that Serial has initalized
+#else
+  if (!Serial) delay(300);  // just a tiny wait to avoid problems later when acessing serial
+#endif
 
   #ifdef ARDUINO_ARCH_ESP32
   #if defined(WLED_DEBUG) && (defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32C3) || ARDUINO_USB_CDC_ON_BOOT)
-  if (!Serial) delay(2500);  // WLEDMM allow CDC USB serial to initialise
+  if (!Serial) delay(2500);  // WLEDMM allow CDC USB serial to initialise (WLED_DEBUG only)
   #endif
   #if ARDUINO_USB_CDC_ON_BOOT || ARDUINO_USB_MODE
     #if ARDUINO_USB_CDC_ON_BOOT && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6))
     //  WLEDMM avoid "hung devices" when USB_CDC is enabled; see https://github.com/espressif/arduino-esp32/issues/9043
     Serial.setTxTimeoutMs(0);    // potential side-effect: incomplete debug output, with missing characters whenever TX buffer is full.
     #endif
+#if !defined(WLEDMM_NO_SERIAL_WAIT) || defined(WLED_DEBUG)
   if (!Serial) delay(2500);  // WLEDMM: always allow CDC USB serial to initialise
   if (Serial) Serial.println("wait 1");  // waiting a bit longer ensures that a  debug messages are shown in serial monitor
   if (!Serial) delay(2500);
@@ -485,6 +476,8 @@ void WLED::setup()
   if (!Serial) delay(2500);
 
   if (Serial) Serial.flush(); // WLEDMM
+#endif
+
   //Serial.setTimeout(350); // WLEDMM: don't change timeout, as it causes crashes later
   // WLEDMM: redirect debug output to HWCDC
   #if ARDUINO_USB_CDC_ON_BOOT && (defined(WLED_DEBUG) || defined(SR_DEBUG))
@@ -536,6 +529,7 @@ void WLED::setup()
   USER_PRINT(F(", ")); USER_PRINT(ESP.getCpuFreqMHz()); USER_PRINTLN(F("MHz."));
 
   // WLEDMM begin
+  delay(20); USER_FLUSH(); // drain serial output buffers
   USER_PRINT(F("CPU    "));
   esp_reset_reason_t resetReason = getRestartReason();
   USER_PRINT(restartCode2InfoLong(resetReason));
@@ -547,6 +541,9 @@ void WLED::setup()
   USER_PRINTF("Core#0 %s (%d)", resetCode2Info(core0code).c_str(), core0code);
   if (core1code > 0) {USER_PRINTF("; Core#1 %s (%d)", resetCode2Info(core1code).c_str(), core1code);}
   USER_PRINTLN(F("."));
+  if ((core0code > 1) && (core0code <= 20) && (core0code != 3) && (core0code != 12) && (core0code != 14)) errorFlag = ERR_SYS_REBOOT; // abnormal reboot
+  if ((resetReason >= 4) && (resetReason < 10)) errorFlag = ERR_SYS_REBOOT; // abnormal reboot (crash, brownout, watchdog, etc)
+  if ((resetReason == ESP_RST_BROWNOUT) || (core0code == 15)) errorFlag = ERR_SYS_BROWNOUT; // brownout detected
   // WLEDMM end
 
   USER_PRINT(F("FLASH: ")); USER_PRINT((ESP.getFlashChipSize()/1024)/1024);
@@ -558,6 +555,12 @@ void WLED::setup()
     case FM_QOUT: DEBUG_PRINT(F(" (QOUT)"));break;
     case FM_DIO:  DEBUG_PRINT(F(" (DIO)")); break;
     case FM_DOUT: DEBUG_PRINT(F(" (DOUT)"));break;
+    #if defined(CONFIG_IDF_TARGET_ESP32S3) && CONFIG_ESPTOOLPY_FLASHMODE_OPI
+      case FM_FAST_READ: DEBUG_PRINT(F(" (OPI)"));break;
+    #else
+      case FM_FAST_READ: DEBUG_PRINT(F(" (fast_read)"));break;
+    #endif
+    case FM_SLOW_READ: DEBUG_PRINT(F(" (slow_read)"));break;
     default: break;
   }
   #endif
@@ -604,10 +607,10 @@ void WLED::setup()
   DEBUG_PRINTF("%s min free stack %d\n", pcTaskGetTaskName(NULL), uxTaskGetStackHighWaterMark(NULL)); //WLEDMM
 #endif
 
-#if defined(ARDUINO_ARCH_ESP32) && defined(BOARD_HAS_PSRAM)
+#if defined(ARDUINO_ARCH_ESP32) && (defined(BOARD_HAS_PSRAM) || defined(CONFIG_ESPTOOLPY_FLASHMODE_OPI))
   //psramInit(); //WLEDMM?? softhack007: not sure if explicit init is really needed ... lets disable it here and see if that works
   #if defined(CONFIG_IDF_TARGET_ESP32S3)
-    #if CONFIG_SPIRAM_MODE_OCT && defined(BOARD_HAS_PSRAM)
+    #if CONFIG_ESPTOOLPY_FLASHMODE_OPI || (CONFIG_SPIRAM_MODE_OCT && defined(BOARD_HAS_PSRAM))
       // S3: reserve GPIO 33-37 for "octal" PSRAM
       managed_pin_type pins[] = { {33, true}, {34, true}, {35, true}, {36, true}, {37, true} };
       pinManager.allocateMultiplePins(pins, sizeof(pins)/sizeof(managed_pin_type), PinOwner::SPI_RAM);
@@ -635,7 +638,8 @@ void WLED::setup()
   #endif
 #endif
 #if defined(ARDUINO_ARCH_ESP32)
-  if (strncmp("ESP32-PICO", ESP.getChipModel(), 10) == 0) { // WLEDMM detect pico board at runtime
+  if ((strncmp("ESP32-PICO", ESP.getChipModel(), 10) == 0) || (strncmp("ESP32-U4WDH", ESP.getChipModel(), 11) == 0))
+  { // WLEDMM detect pico board and esp32-mini1 board at runtime
     // special handling for PICO-D4: gpio16+17 are in use for onboard SPI FLASH (not PSRAM)
     managed_pin_type pins[] = { {16, true}, {17, true} };
     pinManager.allocateMultiplePins(pins, sizeof(pins)/sizeof(managed_pin_type), PinOwner::SPI_RAM);
@@ -652,9 +656,14 @@ void WLED::setup()
   pinManager.allocatePin(2, true, PinOwner::DMX);
 #endif
 
-#if defined(ALL_JSON_TO_PSRAM) && defined(WLED_USE_PSRAM_JSON)
-  USER_PRINTLN(F("JSON gabage collection (initial)."));
-  doc.garbageCollect();   // WLEDMM experimental - this seems to move the complete doc[] into PSRAM
+#if defined(ALL_JSON_TO_PSRAM) && defined(BOARD_HAS_PSRAM) && (defined(WLED_USE_PSRAM_JSON) || defined(WLED_USE_PSRAM))
+  if (psramFound()) {
+    DEBUG_PRINT(F("\nfree heap ")); DEBUG_PRINTLN(ESP.getFreeHeap());
+    USER_PRINTLN(F("JSON gabage collection (initial)."));
+    doc.garbageCollect();   // WLEDMM experimental - this seems to move the complete doc[] into PSRAM
+	  USER_PRINT(F("PSRAM in use:")); USER_PRINT(int(ESP.getPsramSize() - ESP.getFreePsram())); USER_PRINTLN(F(" Bytes."));
+    DEBUG_PRINT(F("free heap ")); DEBUG_PRINTLN(ESP.getFreeHeap());
+  }
 #endif
 
 // WLEDMM experimental: support for single neoPixel on Adafruit boards
@@ -893,9 +902,10 @@ void WLED::setup()
 void WLED::beginStrip()
 {
   // Initialize NeoPixel Strip and button
+  strip.fill(BLACK);    // WLEDMM avoids random colors at power-on
   strip.finalizeInit(); // busses created during deserializeConfig()
   strip.makeAutoSegments();
-  strip.setBrightness(0);
+  strip.setBrightness(0, true); // WLEDMM directly apply BLACK (no transition time)
   strip.setShowCallback(handleOverlayDraw);
 
   if (turnOnAtBoot) {
@@ -913,8 +923,13 @@ void WLED::beginStrip()
   colorUpdated(CALL_MODE_INIT);
 
   // init relay pin
-  if (rlyPin>=0)
+  if (rlyPin>=0) {
+    if (strip.isUpdating()) delay(FRAMETIME_FIXED); // WLEDMM ensure that no background led communication is happening while powering on the strip
     digitalWrite(rlyPin, (rlyMde ? bri : !bri));
+    delay(75); // wait for relay to switch and power to stabilize
+    strip.show(); // update LEDs
+    delay(5);
+  }
 }
 
 void WLED::initAP(bool resetAP)
@@ -1353,9 +1368,19 @@ void WLED::handleConnection()
       initAP();
     }
   } else if (!interfacesInited) { //newly connected
-    DEBUG_PRINTLN("");
-    USER_PRINT(F("Connected! IP address: "));
+    USER_PRINTLN("");
+    USER_PRINT(F("Connected! IP address: http://"));
     USER_PRINTLN(Network.localIP());
+    //if (Network.isEthernet()) {
+    //  #if ESP32
+    //  USER_PRINT(ETH.localIP());
+    //  USER_PRINTLN(" via Ethernet");
+    //  #endif
+    //} else {
+    //  USER_PRINT(Network.localIP());
+    //  USER_PRINTLN(" via WiFi");
+    //}
+
     if (improvActive) {
       if (improvError == 3) sendImprovStateResponse(0x00, true);
       sendImprovStateResponse(0x04);
